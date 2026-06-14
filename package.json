@@ -1,0 +1,43 @@
+{
+  "name": "notice-tracker-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Event-driven backend for tracking and notifying web notices",
+  "main": "dist/app.js",
+  "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write src",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@fastify/helmet": "^11.1.1",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/static": "^7.0.4",
+    "bullmq": "^5.12.6",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "firebase-admin": "^12.3.0",
+    "ioredis": "^5.4.1",
+    "node-cron": "^3.0.3",
+    "openai": "^4.52.7",
+    "playwright": "^1.45.2",
+    "turndown": "^7.2.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/node-cron": "^3.0.11",
+    "@types/turndown": "^5.0.5",
+    "@typescript-eslint/eslint-plugin": "^7.16.0",
+    "@typescript-eslint/parser": "^7.16.0",
+    "eslint": "^8.57.0",
+    "pino-pretty": "^11.2.1",
+    "prettier": "^3.3.3",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}

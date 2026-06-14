@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notice Tracker — Test UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ─── Reset & Tokens ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #090d16;
+      --bg2:         #0e1422;
+      --bg3:         #151c2e;
+      --surface:     rgba(255,255,255,0.04);
+      --surface-h:   rgba(255,255,255,0.07);
+      --border:      rgba(255,255,255,0.08);
+      --border-h:    rgba(255,255,255,0.16);
+
+      --accent:      #6366f1;
+      --accent-glow: rgba(99,102,241,0.35);
+      --accent2:     #8b5cf6;
+      --teal:        #14b8a6;
+      --teal-glow:   rgba(20,184,166,0.3);
+
+      --green:       #22c55e;
+      --green-dim:   rgba(34,197,94,0.15);
+      --amber:       #f59e0b;
+      --amber-dim:   rgba(245,158,11,0.15);
+      --red:         #ef4444;
+      --red-dim:     rgba(239,68,68,0.12);
+
+      --txt:         #e2e8f0;
+      --txt2:        #94a3b8;
+      --txt3:        #475569;
+
+      --r:           12px;
+      --r-sm:        8px;
+      --shadow:      0 4px 24px rgba(0,0,0,0.5);
+      --shadow-lg:   0 8px 40px rgba(0,0,0,0.6);
+    }
+
+    html { height: 100%; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--txt);
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+
+    /* ─── Background Glow ────────────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Auth Screen ────────────────────────────────────────────────────────── */
+    #auth-screen {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      background: var(--bg);
+      transition: opacity 0.4s, visibility 0.4s;
+    }
+    #auth-screen.hidden { opacity: 0; visibility: hidden; }
+
+    .auth-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-lg), 0 0 60px rgba(99,102,241,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .auth-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2), var(--teal));
+    }
+
+    .auth-logo {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 32px;
+    }
+    .auth-logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .auth-logo-text { font-size: 18px; font-weight: 700; color: var(--txt); }
+    .auth-logo-sub { font-size: 12px; color: var(--txt2); margin-top: 1px; }
+
+    .auth-tabs {
+      display: flex; gap: 4px;
+      background: var(--bg3);
+      border-radius: var(--r-sm);
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .auth-tab {
+      flex: 1; padding: 8px;
+      background: none; border: none;
+      border-radius: 6px;
+      color: var(--txt2); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .auth-tab.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block; font-size: 12px; font-weight: 500;
+      color: var(--txt2); margin-bottom: 6px; letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .form-input {
+      width: 100%; padding: 11px 14px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r-sm); color: var(--txt);
+      font-family: 'Inter', sans-serif; font-size: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .form-input::placeholder { color: var(--txt3); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 20px;
+      border: none; border-radius: var(--r-sm);
+      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff; width: 100%;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.6; transform: none; cursor: not-allowed; }
+
+    .btn-sm {
+      padding: 6px 12px; font-size: 12px; border-radius: 6px;
+    }
+    .btn-ghost {
+      background: var(--surface); color: var(--txt2); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface-h); color: var(--txt); border-color: var(--border-h); }
+    .btn-danger {
+      background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.2);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.2); }
+    .btn-teal {
+      background: var(--teal-glow); color: var(--teal); border: 1px solid rgba(20,184,166,0.25);
+    }
+    .btn-teal:hover { background: rgba(20,184,166,0.2); }
+
+    .auth-error {
+      margin-top: 14px; padding: 10px 14px;
+      background: var(--red-dim); border: 1px solid rgba(239,68,68,0.2);
+      border-radius: var(--r-sm); color: var(--red);
+      font-size: 13px; display: none;
+    }
+    .auth-error.show { display: block; }
+
+    .auth-config-notice {
+      margin-top: 20px; padding: 12px 14px;
+      background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.25);
+      border-radius: var(--r-sm); color: var(--amber);
+      font-size: 12px; line-height: 1.5;
+    }
+    .auth-config-notice code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; background: rgba(245,158,11,0.15); padding: 1px 5px; border-radius: 3px;
+    }
+
+    /* ─── App Shell ──────────────────────────────────────────────────────────── */
+    #app { display: none; position: relative; z-index: 1; min-height: 100vh; }
+    #app.visible { display: block; }
+
+    /* ─── Top Nav ────────────────────────────────────────────────────────────── */
+    .navbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(9,13,22,0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 60px;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 16px; font-weight: 700;
+    }
+    .nav-brand-icon {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-user {
+      font-size: 13px; color: var(--txt2);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; color: #fff;
+    }
+
+    /* ─── Layout ─────────────────────────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    .page-header { margin-bottom: 28px; }
+    .page-title { font-size: 24px; font-weight: 700; }
+    .page-subtitle { font-size: 14px; color: var(--txt2); margin-top: 4px; }
+
+    /* ─── Add Tracker Card ───────────────────────────────────────────────────── */
+    .add-tracker-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 24px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+    .add-tracker-card h2 {
+      font-size: 15px; font-weight: 600; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .add-tracker-form {
+      display: grid; grid-template-columns: 1fr 1fr auto;
+      gap: 12px; align-items: end;
+    }
+    @media (max-width: 700px) {
+      .add-tracker-form { grid-template-columns: 1fr; }
+    }
+
+    /* ─── API Base URL bar ───────────────────────────────────────────────────── */
+    .api-bar {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .api-bar label { color: var(--txt2); white-space: nowrap; }
+    .api-bar input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--teal); font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    }
+    .api-status-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: var(--txt3); transition: background 0.3s;
+    }
+    .api-status-dot.alive { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-dot 2s infinite; }
+    .api-status-dot.dead  { background: var(--red); }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ─── Section Label ──────────────────────────────────────────────────────── */
+    .section-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--txt3);
+      margin-bottom: 12px;
+    }
+
+    /* ─── Tracker Cards ──────────────────────────────────────────────────────── */
+    .trackers-list { display: flex; flex-direction: column; gap: 16px; }
+
+    .tracker-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: border-color 0.2s;
+    }
+    .tracker-card:hover { border-color: var(--border-h); }
+
+    .tracker-header {
+      padding: 18px 20px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer;
+    }
+
+    .scraper-status {
+      display: flex; align-items: center; gap: 6px;
+      flex-shrink: 0;
+    }
+    .scraper-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .scraper-dot.idle    { background: var(--txt3); }
+    .scraper-dot.running {
+      background: var(--amber);
+      box-shadow: 0 0 8px var(--amber);
+      animation: pulse-run 1s ease-in-out infinite;
+    }
+    .scraper-dot.done    {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse-dot 3s infinite;
+    }
+    .scraper-dot.error   { background: var(--red); }
+
+    @keyframes pulse-run {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.4); opacity: 0.7; }
+    }
+
+    .tracker-info { flex: 1; min-width: 0; }
+    .tracker-url {
+      font-size: 14px; font-weight: 600; color: var(--txt);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tracker-meta {
+      display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap;
+    }
+    .tracker-prompt-pill {
+      font-size: 11px; color: var(--accent);
+      background: var(--accent-glow); padding: 2px 8px; border-radius: 100px;
+      border: 1px solid rgba(99,102,241,0.25);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;
+    }
+    .tracker-time {
+      font-size: 11px; color: var(--txt3);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tracker-actions { display: flex; align-items: center; gap: 8px; }
+
+    .scraper-label {
+      font-size: 11px; font-weight: 500;
+      padding: 3px 8px; border-radius: 100px;
+    }
+    .scraper-label.idle    { background: var(--surface); color: var(--txt3); }
+    .scraper-label.running { background: var(--amber-dim); color: var(--amber); }
+    .scraper-label.done    { background: var(--green-dim); color: var(--green); }
+    .scraper-label.error   { background: var(--red-dim);   color: var(--red); }
+
+    .chevron {
+      width: 16px; height: 16px; color: var(--txt3);
+      transition: transform 0.25s;
+    }
+    .tracker-card.expanded .chevron { transform: rotate(180deg); }
+
+    /* ─── Notices Panel ──────────────────────────────────────────────────────── */
+    .notices-panel {
+      border-top: 1px solid var(--border);
+      display: none;
+      padding: 0 20px 20px;
+    }
+    .tracker-card.expanded .notices-panel { display: block; }
+
+    .notices-toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0 12px;
+    }
+    .notices-count {
+      font-size: 13px; color: var(--txt2);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .new-badge {
+      background: var(--green-dim); color: var(--green);
+      border: 1px solid rgba(34,197,94,0.25);
+      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 100px;
+      letter-spacing: 0.05em;
+    }
+
+    .notices-grid { display: flex; flex-direction: column; gap: 10px; }
+
+    .notice-item {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 14px 16px;
+      display: flex; gap: 14px; align-items: flex-start;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .notice-item.is-new {
+      border-color: rgba(34,197,94,0.3);
+      background: linear-gradient(135deg, rgba(34,197,94,0.04), var(--bg3));
+    }
+    .notice-item.is-new::before {
+      content: '';
+      position: absolute; top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--green);
+      border-radius: 3px 0 0 3px;
+    }
+    .notice-item.is-old::before {
+      content: '';
+      position: absolute; top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--txt3);
+      border-radius: 3px 0 0 3px;
+    }
+
+    .notice-marker {
+      flex-shrink: 0;
+      font-size: 10px; font-weight: 700; padding: 3px 8px;
+      border-radius: 100px; letter-spacing: 0.06em;
+      margin-top: 1px;
+    }
+    .notice-marker.new {
+      background: var(--green-dim); color: var(--green);
+      border: 1px solid rgba(34,197,94,0.3);
+      animation: new-glow 2s ease-in-out infinite;
+    }
+    .notice-marker.old {
+      background: var(--surface); color: var(--txt3);
+      border: 1px solid var(--border);
+    }
+
+    @keyframes new-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+      50% { box-shadow: 0 0 8px 2px rgba(34,197,94,0.25); }
+    }
+
+    .notice-body { flex: 1; min-width: 0; }
+    .notice-title {
+      font-size: 14px; font-weight: 600; color: var(--txt);
+      margin-bottom: 4px; line-height: 1.4;
+    }
+    .notice-summary {
+      font-size: 12px; color: var(--txt2); line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .notice-footer {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .notice-date {
+      font-size: 11px; color: var(--txt3);
+      font-family: 'JetBrains Mono', monospace;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .notice-link {
+      font-size: 11px; color: var(--accent);
+      text-decoration: none; display: flex; align-items: center; gap: 3px;
+    }
+    .notice-link:hover { text-decoration: underline; }
+
+    .notices-empty {
+      text-align: center; padding: 32px 0;
+      color: var(--txt3); font-size: 13px;
+    }
+    .notices-empty-icon { font-size: 28px; margin-bottom: 8px; }
+
+    .notices-loading {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 24px; color: var(--txt3); font-size: 13px;
+    }
+    .spin {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Empty State ────────────────────────────────────────────────────────── */
+    .trackers-empty {
+      text-align: center; padding: 64px 24px;
+      color: var(--txt3);
+    }
+    .trackers-empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .trackers-empty h3 { font-size: 16px; color: var(--txt2); margin-bottom: 6px; }
+    .trackers-empty p { font-size: 13px; }
+
+    /* ─── Toast ──────────────────────────────────────────────────────────────── */
+    #toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 10px;
+      z-index: 9999;
+    }
+    .toast {
+      padding: 12px 18px; border-radius: var(--r-sm);
+      font-size: 13px; font-weight: 500;
+      background: var(--bg2); border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      animation: slide-in 0.3s ease;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast.success { border-color: rgba(34,197,94,0.3); color: var(--green); }
+    .toast.error   { border-color: rgba(239,68,68,0.3); color: var(--red); }
+    .toast.info    { border-color: rgba(99,102,241,0.3); color: var(--accent); }
+
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    /* ─── Misc ───────────────────────────────────────────────────────────────── */
+    .divider { height: 1px; background: var(--border); margin: 24px 0; }
+  </style>
+</head>
+<body>
+
+<!-- ─── Auth Screen ──────────────────────────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">📡</div>
+      <div>
+        <div class="auth-logo-text">Notice Tracker</div>
+        <div class="auth-logo-sub">Test Console</div>
+      </div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+      <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="login-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+    </div>
+
+    <div id="signup-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="signup-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="signup-password" placeholder="min 6 chars" />
+      </div>
+      <button class="btn btn-primary" id="signup-btn" onclick="doSignup()">Create Account</button>
+    </div>
+
+    <div class="auth-error" id="auth-error"></div>
+
+
+  </div>
+</div>
+
+<!-- ─── App ─────────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="nav-brand-icon">📡</div>
+      Notice Tracker
+    </div>
+    <div class="nav-right">
+      <div class="nav-user">
+        <div class="nav-avatar" id="nav-avatar">?</div>
+        <span id="nav-email">—</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <div class="page-title">🗂 Trackers</div>
+      <div class="page-subtitle">Manage URLs · Monitor scraper · Read notices</div>
+    </div>
+
+    <!-- API Base URL -->
+    <div class="api-bar">
+      <div class="api-status-dot" id="api-dot" title="API status"></div>
+      <label>API&nbsp;&nbsp;</label>
+      <input type="text" id="api-base" value="" placeholder="(same origin)" oninput="pingApi()" />
+      <button class="btn btn-ghost btn-sm" onclick="pingApi()">Ping</button>
+      <span id="api-status-text" style="font-size:12px;color:var(--txt3)">—</span>
+    </div>
+
+    <!-- Add Tracker -->
+    <div class="add-tracker-card">
+      <h2>➕ Add Tracker</h2>
+      <div class="add-tracker-form">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">URL</label>
+          <input class="form-input" type="url" id="new-url" placeholder="https://university.edu/notices" />
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Prompt</label>
+          <input class="form-input" type="text" id="new-prompt" placeholder="Track scholarship notices only" />
+        </div>
+        <button class="btn btn-primary" style="padding:11px 24px;white-space:nowrap" onclick="addTracker()">
+          Track
+        </button>
+      </div>
+    </div>
+
+    <!-- Tracker List -->
+    <div class="section-label" id="trackers-label">Your Trackers</div>
+    <div class="trackers-list" id="trackers-list">
+      <div class="notices-loading"><div class="spin"></div> Loading trackers…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- ─── Firebase SDK ──────────────────────────────────────────────────────────── -->
+<script type="module">
+  import { initializeApp }                        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, signInWithEmailAndPassword,
+           createUserWithEmailAndPassword,
+           signOut, onAuthStateChanged }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+  // ── ⚠️  REPLACE THIS WITH YOUR FIREBASE WEB APP CONFIG ──────────────────────
+  // Firebase Console → Project Settings → Your apps → Web app → SDK setup
+  const FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyAjgIJZvWcBvBHUXvD4ISITQGYMTE-kQ0U",
+    authDomain:        "notice-watch.firebaseapp.com",
+    projectId:         "notice-watch",
+    storageBucket:     "notice-watch.firebasestorage.app",
+    messagingSenderId: "946705632610",
+    appId:             "1:946705632610:web:b9bb208c952c38ee84303b",
+    measurementId:     "G-V4B0LNV3YQ",
+  };
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const firebaseApp = initializeApp(FIREBASE_CONFIG);
+  const auth        = getAuth(firebaseApp);
+
+  // Expose to window so non-module functions can call them
+  window._auth = auth;
+  window._signIn  = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
+  window._signUp  = (email, pass) => createUserWithEmailAndPassword(auth, email, pass);
+  window._signOut = ()            => signOut(auth);
+  window._getToken = ()           => auth.currentUser?.getIdToken();
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app').classList.add('visible');
+      document.getElementById('nav-email').textContent = user.email ?? '';
+      document.getElementById('nav-avatar').textContent = (user.email?.[0] ?? '?').toUpperCase();
+      window._currentUser = user;
+      loadTrackers();
+      pingApi();
+      startPolling();
+    } else {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('app').classList.remove('visible');
+      stopPolling();
+      window._currentUser = null;
+    }
+  });
+</script>
+
+<script>
+  // ─── State ──────────────────────────────────────────────────────────────────
+  let trackers = [];              // [{...tracker, status:'idle'|'running'|'done'|'error', notices:[]}]
+  let knownNoticeIds = new Set(); // persisted in sessionStorage per tracker
+  let pollingTimer  = null;
+  let seenThisSession = JSON.parse(sessionStorage.getItem('seenNotices') || '{}');
+
+  function apiBase() { return document.getElementById('api-base').value.replace(/\/$/, ''); }
+
+  // ─── Auth Helpers ────────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.getElementById('login-form').style.display  = tab === 'login'  ? '' : 'none';
+    document.getElementById('signup-form').style.display = tab === 'signup' ? '' : 'none';
+    document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
+    document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    hideAuthError();
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg; el.classList.add('show');
+  }
+  function hideAuthError() { document.getElementById('auth-error').classList.remove('show'); }
+
+  async function doLogin() {
+    hideAuthError();
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-password').value;
+    const btn   = document.getElementById('login-btn');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    try { await window._signIn(email, pass); }
+    catch(e) { showAuthError(friendlyAuthError(e)); btn.disabled = false; btn.textContent = 'Sign In'; }
+  }
+
+  async function doSignup() {
+    hideAuthError();
+    const email = document.getElementById('signup-email').value.trim();
+    const pass  = document.getElementById('signup-password').value;
+    const btn   = document.getElementById('signup-btn');
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try { await window._signUp(email, pass); }
+    catch(e) { showAuthError(friendlyAuthError(e)); btn.disabled = false; btn.textContent = 'Create Account'; }
+  }
+
+  async function doLogout() { await window._signOut(); }
+
+  function friendlyAuthError(e) {
+    const code = e?.code ?? '';
+    if (code.includes('invalid-email'))       return 'Invalid email address.';
+    if (code.includes('user-not-found'))      return 'No account with that email.';
+    if (code.includes('wrong-password'))      return 'Incorrect password.';
+    if (code.includes('email-already'))       return 'Email already in use.';
+    if (code.includes('weak-password'))       return 'Password must be at least 6 characters.';
+    if (code.includes('network-request-failed')) return 'Network error — is the Firebase config correct?';
+    return e?.message ?? 'Unknown error.';
+  }
+
+  // Allow Enter key on auth inputs
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    if (document.getElementById('login-form').style.display !== 'none') doLogin();
+    else doSignup();
+  });
+
+  // ─── API ─────────────────────────────────────────────────────────────────────
+  async function apiFetch(path, opts = {}) {
+    const token = await window._getToken?.();
+    const res = await fetch(apiBase() + path, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(opts.headers ?? {}),
+      },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message ?? `HTTP ${res.status}`);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  // ─── Ping ────────────────────────────────────────────────────────────────────
+  async function pingApi() {
+    const dot  = document.getElementById('api-dot');
+    const text = document.getElementById('api-status-text');
+    dot.className = 'api-status-dot';
+    text.textContent = 'Checking…';
+    try {
+      const t0 = Date.now();
+      await fetch(apiBase() + '/health');
+      const ms = Date.now() - t0;
+      dot.className = 'api-status-dot alive';
+      text.textContent = `Online · ${ms}ms`;
+    } catch {
+      dot.className = 'api-status-dot dead';
+      text.textContent = 'Offline — is the server running?';
+    }
+  }
+
+  // ─── Load Trackers ────────────────────────────────────────────────────────────
+  async function loadTrackers() {
+    try {
+      const data = await apiFetch('/api/trackers');
+      trackers = (data.trackers ?? []).map(t => ({
+        ...t,
+        status: t.lastCheckedAt ? 'done' : 'idle',
+        notices: [],
+        noticesLoaded: false,
+      }));
+      renderTrackers();
+    } catch(e) {
+      document.getElementById('trackers-list').innerHTML =
+        `<div style="color:var(--red);font-size:13px;padding:16px">${e.message}</div>`;
+    }
+  }
+
+  // ─── Add Tracker ──────────────────────────────────────────────────────────────
+  async function addTracker() {
+    const url    = document.getElementById('new-url').value.trim();
+    const prompt = document.getElementById('new-prompt').value.trim();
+    if (!url)    return toast('Enter a URL', 'error');
+    if (!prompt) return toast('Enter a prompt', 'error');
+    try {
+      await apiFetch('/api/trackers', {
+        method: 'POST',
+        body: JSON.stringify({ url, prompt }),
+      });
+      document.getElementById('new-url').value    = '';
+      document.getElementById('new-prompt').value = '';
+      toast('Tracker created — scrape queued!', 'success');
+      await loadTrackers();
+    } catch(e) { toast(e.message, 'error'); }
+  }
+
+  // ─── Delete Tracker ───────────────────────────────────────────────────────────
+  async function deleteTracker(id) {
+    try {
+      await apiFetch(`/api/trackers/${id}`, { method: 'DELETE' });
+      trackers = trackers.filter(t => t.id !== id);
+      renderTrackers();
+      toast('Tracker removed', 'info');
+    } catch(e) { toast(e.message, 'error'); }
+  }
+
+  // ─── Toggle Tracker ───────────────────────────────────────────────────────────
+  async function toggleTracker(id) {
+    try {
+      const res = await apiFetch(`/api/trackers/${id}`, { method: 'PATCH' });
+      const t = trackers.find(t => t.id === id);
+      if (t) t.active = res.active;
+      renderTrackers();
+    } catch(e) { toast(e.message, 'error'); }
+  }
+
+  // ─── Load Notices ─────────────────────────────────────────────────────────────
+  async function loadNotices(trackerId) {
+    const t = trackers.find(t => t.id === trackerId);
+    if (!t) return;
+    const panelEl = document.getElementById(`notices-${trackerId}`);
+    if (!panelEl) return;
+    panelEl.innerHTML = `<div class="notices-loading"><div class="spin"></div> Fetching notices…</div>`;
+    try {
+      const data   = await apiFetch(`/api/notices/${trackerId}`);
+      const fresh  = data.notices ?? [];
+
+      // Mark as NEW if not seen before in this session
+      if (!seenThisSession[trackerId]) seenThisSession[trackerId] = [];
+      const seenSet = new Set(seenThisSession[trackerId]);
+
+      t.notices = fresh.map(n => ({ ...n, isNew: !seenSet.has(n.id) }));
+      t.noticesLoaded = true;
+
+      // Save seen ids for this session
+      seenThisSession[trackerId] = fresh.map(n => n.id);
+      sessionStorage.setItem('seenNotices', JSON.stringify(seenThisSession));
+
+      renderNotices(trackerId);
+    } catch(e) {
+      panelEl.innerHTML = `<div style="color:var(--red);font-size:13px;padding:16px">${e.message}</div>`;
+    }
+  }
+
+  // ─── Polling ──────────────────────────────────────────────────────────────────
+  function startPolling() {
+    stopPolling();
+    pollingTimer = setInterval(async () => {
+      if (!window._currentUser) return;
+      try {
+        const data     = await apiFetch('/api/trackers');
+        const incoming = data.trackers ?? [];
+        let changed    = false;
+
+        for (const fresh of incoming) {
+          const local = trackers.find(t => t.id === fresh.id);
+          if (!local) { changed = true; continue; }
+
+          // Detect if scraper just finished (lastCheckedAt changed)
+          const freshTs = fresh.lastCheckedAt?._seconds ?? 0;
+          const localTs = local.lastCheckedAt?._seconds ?? 0;
+          if (freshTs > localTs) {
+            local.status = 'done';
+            local.lastCheckedAt = fresh.lastCheckedAt;
+            local.lastContentHash = fresh.lastContentHash;
+            changed = true;
+            // Reload notices for expanded cards
+            const card = document.getElementById(`card-${local.id}`);
+            if (card?.classList.contains('expanded')) loadNotices(local.id);
+          }
+
+          // Mark running if recently created and no lastCheckedAt yet
+          if (!fresh.lastCheckedAt) local.status = 'running';
+        }
+
+        if (changed) renderTrackers();
+      } catch { /* silent */ }
+    }, 6000);
+  }
+
+  function stopPolling() {
+    if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
+  }
+
+  // ─── Expand / Collapse ────────────────────────────────────────────────────────
+  function toggleCard(id) {
+    const card = document.getElementById(`card-${id}`);
+    const isExpanded = card.classList.toggle('expanded');
+    if (isExpanded) {
+      const t = trackers.find(t => t.id === id);
+      if (t && !t.noticesLoaded) loadNotices(id);
+    }
+  }
+
+  // ─── Render Trackers ──────────────────────────────────────────────────────────
+  function renderTrackers() {
+    const list = document.getElementById('trackers-list');
+    if (!trackers.length) {
+      list.innerHTML = `
+        <div class="trackers-empty">
+          <div class="trackers-empty-icon">🔍</div>
+          <h3>No trackers yet</h3>
+          <p>Add a URL above to start monitoring notices.</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = trackers.map(t => `
+      <div class="tracker-card" id="card-${t.id}">
+        <div class="tracker-header" onclick="toggleCard('${t.id}')">
+          <div class="scraper-status">
+            <div class="scraper-dot ${t.status}" title="${t.status}"></div>
+          </div>
+          <div class="tracker-info">
+            <div class="tracker-url" title="${escHtml(t.url)}">${escHtml(t.url)}</div>
+            <div class="tracker-meta">
+              <div class="tracker-prompt-pill">${escHtml(t.prompt)}</div>
+              <div class="tracker-time">${t.lastCheckedAt ? '⏱ ' + relTime(t.lastCheckedAt._seconds) : 'Never checked'}</div>
+            </div>
+          </div>
+          <div class="tracker-actions" onclick="event.stopPropagation()">
+            <span class="scraper-label ${t.status}">${statusLabel(t.status)}</span>
+            <button class="btn btn-ghost btn-sm" onclick="toggleTracker('${t.id}')" title="${t.active ? 'Pause' : 'Resume'}">
+              ${t.active ? '⏸' : '▶️'}
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTracker('${t.id}')">Delete</button>
+          </div>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
+        <div class="notices-panel">
+          <div class="notices-toolbar">
+            <div class="notices-count">Notices</div>
+            <button class="btn btn-teal btn-sm" onclick="loadNotices('${t.id}')">↻ Refresh</button>
+          </div>
+          <div id="notices-${t.id}">
+            ${t.noticesLoaded ? renderNoticesHTML(t) : '<div class="notices-loading"><div class="spin"></div> Click to load notices…</div>'}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ─── Render Notices ───────────────────────────────────────────────────────────
+  function renderNotices(trackerId) {
+    const t = trackers.find(t => t.id === trackerId);
+    const el = document.getElementById(`notices-${trackerId}`);
+    if (!t || !el) return;
+    el.innerHTML = renderNoticesHTML(t);
+
+    // Update count badge in toolbar
+    const newCount = t.notices.filter(n => n.isNew).length;
+    const countEl  = el.closest('.notices-panel')?.querySelector('.notices-count');
+    if (countEl) {
+      countEl.innerHTML = `Notices <span class="new-badge">${newCount} new</span>`;
+    }
+  }
+
+  function renderNoticesHTML(t) {
+    if (!t.notices.length) return `
+      <div class="notices-empty">
+        <div class="notices-empty-icon">📭</div>
+        No notices found yet. The scraper will check on the next cycle.
+      </div>`;
+
+    return `<div class="notices-grid">${t.notices.map(n => `
+      <div class="notice-item ${n.isNew ? 'is-new' : 'is-old'}">
+        <span class="notice-marker ${n.isNew ? 'new' : 'old'}">${n.isNew ? 'NEW' : 'OLD'}</span>
+        <div class="notice-body">
+          <div class="notice-title">${escHtml(n.title)}</div>
+          <div class="notice-summary">${escHtml(n.summary)}</div>
+          <div class="notice-footer">
+            ${n.publishedDate ? `<span class="notice-date">📅 ${escHtml(n.publishedDate)}</span>` : ''}
+            ${n.link ? `<a class="notice-link" href="${escHtml(n.link)}" target="_blank" rel="noopener">🔗 View</a>` : ''}
+          </div>
+        </div>
+      </div>`).join('')}</div>`;
+  }
+
+  // ─── Toast ────────────────────────────────────────────────────────────────────
+  function toast(msg, type = 'info') {
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${icon}</span><span>${escHtml(msg)}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function relTime(seconds) {
+    const diff = Math.floor(Date.now()/1000) - seconds;
+    if (diff < 60)   return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400)return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+  }
+
+  function statusLabel(s) {
+    return { idle: 'Idle', running: 'Scraping…', done: 'Up to date', error: 'Error' }[s] ?? s;
+  }
+</script>
+
+</body>
+</html>

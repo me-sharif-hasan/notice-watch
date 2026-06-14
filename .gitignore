@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+config/serviceAccountKey.json
+service-account.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

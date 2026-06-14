@@ -38,6 +38,8 @@ jobs:
           envs: DEEPSEEK_API_KEY,SERVICE_ACCOUNT
           script: |
             set -e
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ~/notice-watch
 
             # Write service account JSON

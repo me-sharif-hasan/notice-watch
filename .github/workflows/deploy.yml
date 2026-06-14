@@ -67,9 +67,6 @@ jobs:
             # Install node deps (postinstall runs: playwright install chromium)
             npm ci
 
-            # Install chromium OS-level dependencies
-            sudo npx playwright install-deps chromium
-
             # Build TypeScript
             npm run build
 

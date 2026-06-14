@@ -62,6 +62,9 @@ await app.register(staticPlugin, {
 // Redirect bare /ui to /ui/index.html
 app.get('/ui', async (_req, reply) => reply.redirect('/ui/index.html'));
 
+// Redirect root to /ui for browser access
+app.get('/', async (_req, reply) => reply.redirect('/ui/index.html'));
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 await app.register(trackerRoutes, { prefix: '/api/trackers' });

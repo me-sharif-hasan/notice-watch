@@ -47,6 +47,17 @@ scraperQueueEvents.on('failed', ({ jobId, failedReason }) => {
   console.error(`[Queue] Job ${jobId} failed: ${failedReason}`);
 });
 
+// ─── URL Resolution ───────────────────────────────────────────────────────────
+
+function resolveLink(link: string | null, base: string): string {
+  if (!link) return '';
+  try {
+    return new URL(link, base).href;
+  } catch {
+    return link;
+  }
+}
+
 // ─── Max Markdown Size ────────────────────────────────────────────────────────
 
 const MAX_MARKDOWN_CHARS = parseInt(process.env.MAX_MARKDOWN_CHARS ?? '50000', 10);
@@ -147,7 +158,7 @@ async function processJob(data: ScraperJobData): Promise<void> {
       trackerId,
       title: raw.title,
       summary: raw.summary,
-      link: raw.link ?? '',
+      link: resolveLink(raw.link, tracker.url),
       noticeHash: hash,
       publishedDate: raw.date,
       createdAt: Timestamp.now(),

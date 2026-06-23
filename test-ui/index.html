@@ -12,14 +12,17 @@
   <!-- Ant Design reset -->
   <link rel="stylesheet" href="https://unpkg.com/antd@5.21.6/dist/reset.css" />
 
+  <!-- dayjs — MUST load before antd (antd UMD depends on it as a global) -->
+  <script src="https://unpkg.com/dayjs@1.11.11/dayjs.min.js"></script>
+
   <!-- React 18 -->
   <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 
-  <!-- Ant Design 5 -->
+  <!-- Ant Design 5 (requires dayjs + React globals to already be defined) -->
   <script src="https://unpkg.com/antd@5.21.6/dist/antd.min.js"></script>
 
-  <!-- Babel (JSX at runtime) -->
+  <!-- Babel (JSX at runtime — must come after all UMD libs) -->
   <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 
   <style>

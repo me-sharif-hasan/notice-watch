@@ -28,6 +28,7 @@ export interface NoticeDoc {
   noticeHash: string;
   publishedDate: string | null;
   createdAt: Timestamp;
+  readAt: Timestamp | null;
 }
 
 export interface DeviceDoc {

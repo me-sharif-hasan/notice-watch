@@ -160,6 +160,7 @@ async function processJob(data: ScraperJobData): Promise<void> {
       summary: raw.summary,
       link: resolveLink(raw.link, tracker.url),
       noticeHash: hash,
+      readAt: null,
       publishedDate: raw.date,
       createdAt: Timestamp.now(),
     };

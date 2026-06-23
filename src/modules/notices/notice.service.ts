@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase-admin/firestore';
 import { noticesCol, trackersCol } from '../../services/firestore.js';
 import type { NoticeDoc } from '../../types/index.js';
 
@@ -47,4 +48,22 @@ export async function getNotices(
     notices: docs.slice(0, pageSize),
     hasMore,
   };
+}
+
+// ─── Mark Notice as Read ──────────────────────────────────────────────────────
+
+export async function markNoticeAsRead(uid: string, noticeId: string): Promise<void> {
+  const noticeRef = noticesCol().doc(noticeId);
+  const noticeSnap = await noticeRef.get();
+
+  if (!noticeSnap.exists) throw new Error('Notice not found');
+
+  const notice = noticeSnap.data() as NoticeDoc;
+
+  const trackerSnap = await trackersCol().doc(notice.trackerId).get();
+  if (!trackerSnap.exists || trackerSnap.data()!.uid !== uid) {
+    throw new Error('Not authorized');
+  }
+
+  await noticeRef.update({ readAt: Timestamp.now() });
 }

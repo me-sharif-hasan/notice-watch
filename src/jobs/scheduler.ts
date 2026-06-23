@@ -1,14 +1,8 @@
-import cron from 'node-cron';
 import { trackersCol } from '../services/firestore.js';
 import { scraperQueue } from '../workers/scraper.worker.js';
 
-/**
- * Loads all active trackers from Firestore and enqueues a scrape job for each.
- *
- * Uses the trackerId as the BullMQ jobId (with a 'cron-' prefix) so that if a
- * tracker is already queued from a previous cron cycle that hasn't completed,
- * BullMQ will deduplicate it and not add a duplicate job.
- */
+const INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
 async function enqueueAllActiveTrackers(): Promise<void> {
   console.log('[Scheduler] Starting scheduled scrape cycle...');
 
@@ -20,12 +14,16 @@ async function enqueueAllActiveTrackers(): Promise<void> {
 
     if (trackers.length === 0) return;
 
-    // Bulk-add jobs with deduplication by jobId
+    // Use a time-bucketed jobId so deduplication only blocks duplicates within
+    // the same 6-hour window, not across cycles. Completed jobs from a prior
+    // cycle have a different bucket and won't block re-enqueue.
+    const cycleBucket = Math.floor(Date.now() / INTERVAL_MS);
+
     const jobs = trackers.map((tracker) => ({
       name: 'scrape' as Parameters<typeof scraperQueue.add>[0],
       data: { trackerId: tracker.id },
       opts: {
-        jobId: `cron-${tracker.id}`, // Deduplicates: same tracker won't queue twice
+        jobId: `cron-${tracker.id}-${cycleBucket}`,
         attempts: 3,
         backoff: { type: 'exponential' as const, delay: 5000 },
       },
@@ -39,14 +37,7 @@ async function enqueueAllActiveTrackers(): Promise<void> {
   }
 }
 
-/**
- * Starts the cron scheduler.
- * Runs every 6 hours: at minute 0 of hours 0, 6, 12, 18.
- */
 export function startScheduler(): void {
-  cron.schedule('0 */6 * * *', () => {
-    void enqueueAllActiveTrackers();
-  });
-
-  console.log('[Scheduler] Started — running every 6 hours (0 */6 * * *)');
+  setInterval(() => { void enqueueAllActiveTrackers(); }, INTERVAL_MS);
+  console.log(`[Scheduler] Started — running every ${INTERVAL_MS / 3600000}h via setInterval`);
 }

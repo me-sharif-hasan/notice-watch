@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { verifyFirebaseToken } from '../auth/auth.middleware.js';
-import { getNotices } from './notice.service.js';
+import { getNotices, markNoticeAsRead } from './notice.service.js';
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
@@ -48,6 +48,24 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
           nextCursor: hasMore ? notices[notices.length - 1]?.id : null,
         },
       });
+    },
+  );
+
+  // ── PATCH /api/notices/:noticeId/read ───────────────────────────────────────
+  app.patch(
+    '/:noticeId/read',
+    async (
+      request: FastifyRequest<{ Params: { noticeId: string } }>,
+      reply: FastifyReply,
+    ) => {
+      try {
+        await markNoticeAsRead(request.user.uid, request.params.noticeId);
+        return reply.status(204).send();
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Unknown error';
+        const status = msg === 'Notice not found' ? 404 : msg === 'Not authorized' ? 403 : 500;
+        return reply.status(status).send({ statusCode: status, message: msg });
+      }
     },
   );
 }

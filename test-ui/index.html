@@ -3,755 +3,256 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Notice Tracker — Test UI</title>
+  <title>Notice Tracker</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Ant Design reset -->
+  <link rel="stylesheet" href="https://unpkg.com/antd@5.21.6/dist/reset.css" />
+
+  <!-- React 18 -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+
+  <!-- Ant Design 5 -->
+  <script src="https://unpkg.com/antd@5.21.6/dist/antd.min.js"></script>
+
+  <!-- Babel (JSX at runtime) -->
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 
   <style>
-    /* ─── Reset & Tokens ─────────────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:          #090d16;
-      --bg2:         #0e1422;
-      --bg3:         #151c2e;
-      --surface:     rgba(255,255,255,0.04);
-      --surface-h:   rgba(255,255,255,0.07);
-      --border:      rgba(255,255,255,0.08);
-      --border-h:    rgba(255,255,255,0.16);
-
-      --accent:      #6366f1;
-      --accent-glow: rgba(99,102,241,0.35);
-      --accent2:     #8b5cf6;
-      --teal:        #14b8a6;
-      --teal-glow:   rgba(20,184,166,0.3);
-
-      --green:       #22c55e;
-      --green-dim:   rgba(34,197,94,0.15);
-      --amber:       #f59e0b;
-      --amber-dim:   rgba(245,158,11,0.15);
-      --red:         #ef4444;
-      --red-dim:     rgba(239,68,68,0.12);
-
-      --txt:         #e2e8f0;
-      --txt2:        #94a3b8;
-      --txt3:        #475569;
-
-      --r:           12px;
-      --r-sm:        8px;
-      --shadow:      0 4px 24px rgba(0,0,0,0.5);
-      --shadow-lg:   0 8px 40px rgba(0,0,0,0.6);
-    }
-
-    html { height: 100%; }
-
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
     body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--txt);
-      min-height: 100%;
-      overflow-x: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f7fa;
     }
 
-    /* ─── Background Glow ────────────────────────────────────────────────────── */
-    body::before {
-      content: '';
-      position: fixed;
-      top: -20%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 900px;
-      height: 500px;
-      background: radial-gradient(ellipse, rgba(99,102,241,0.12) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* ─── Auth Screen ────────────────────────────────────────────────────────── */
-    #auth-screen {
-      position: fixed; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-      background: var(--bg);
-      transition: opacity 0.4s, visibility 0.4s;
-    }
-    #auth-screen.hidden { opacity: 0; visibility: hidden; }
-
-    .auth-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 48px 40px;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: var(--shadow-lg), 0 0 60px rgba(99,102,241,0.08);
-      position: relative;
+    /* ── Marquee ticker ──────────────────────────────────────────────────────── */
+    .ticker-bar {
+      background: linear-gradient(90deg, #e6f4ff 0%, #f0f7ff 100%);
+      border-bottom: 1px solid #bae0ff;
+      height: 36px;
+      display: flex;
+      align-items: center;
       overflow: hidden;
     }
-    .auth-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--accent), var(--accent2), var(--teal));
-    }
-
-    .auth-logo {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 32px;
-    }
-    .auth-logo-icon {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-    }
-    .auth-logo-text { font-size: 18px; font-weight: 700; color: var(--txt); }
-    .auth-logo-sub { font-size: 12px; color: var(--txt2); margin-top: 1px; }
-
-    .auth-tabs {
-      display: flex; gap: 4px;
-      background: var(--bg3);
-      border-radius: var(--r-sm);
-      padding: 4px;
-      margin-bottom: 28px;
-    }
-    .auth-tab {
-      flex: 1; padding: 8px;
-      background: none; border: none;
-      border-radius: 6px;
-      color: var(--txt2); font-size: 14px; font-weight: 500;
-      cursor: pointer; transition: all 0.2s;
-    }
-    .auth-tab.active {
-      background: var(--accent);
+    .ticker-pill {
+      background: #1677ff;
       color: #fff;
-      box-shadow: 0 2px 8px var(--accent-glow);
-    }
-
-    .form-group { margin-bottom: 16px; }
-    .form-label {
-      display: block; font-size: 12px; font-weight: 500;
-      color: var(--txt2); margin-bottom: 6px; letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .form-input {
-      width: 100%; padding: 11px 14px;
-      background: var(--bg3); border: 1px solid var(--border);
-      border-radius: var(--r-sm); color: var(--txt);
-      font-family: 'Inter', sans-serif; font-size: 14px;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      outline: none;
-    }
-    .form-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-glow);
-    }
-    .form-input::placeholder { color: var(--txt3); }
-
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 11px 20px;
-      border: none; border-radius: var(--r-sm);
-      font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600;
-      cursor: pointer; transition: all 0.2s;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: #fff; width: 100%;
-      box-shadow: 0 4px 16px var(--accent-glow);
-    }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
-    .btn-primary:active { transform: translateY(0); }
-    .btn-primary:disabled { opacity: 0.6; transform: none; cursor: not-allowed; }
-
-    .btn-sm {
-      padding: 6px 12px; font-size: 12px; border-radius: 6px;
-    }
-    .btn-ghost {
-      background: var(--surface); color: var(--txt2); border: 1px solid var(--border);
-    }
-    .btn-ghost:hover { background: var(--surface-h); color: var(--txt); border-color: var(--border-h); }
-    .btn-danger {
-      background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.2);
-    }
-    .btn-danger:hover { background: rgba(239,68,68,0.2); }
-    .btn-teal {
-      background: var(--teal-glow); color: var(--teal); border: 1px solid rgba(20,184,166,0.25);
-    }
-    .btn-teal:hover { background: rgba(20,184,166,0.2); }
-
-    .auth-error {
-      margin-top: 14px; padding: 10px 14px;
-      background: var(--red-dim); border: 1px solid rgba(239,68,68,0.2);
-      border-radius: var(--r-sm); color: var(--red);
-      font-size: 13px; display: none;
-    }
-    .auth-error.show { display: block; }
-
-    .auth-config-notice {
-      margin-top: 20px; padding: 12px 14px;
-      background: var(--amber-dim); border: 1px solid rgba(245,158,11,0.25);
-      border-radius: var(--r-sm); color: var(--amber);
-      font-size: 12px; line-height: 1.5;
-    }
-    .auth-config-notice code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; background: rgba(245,158,11,0.15); padding: 1px 5px; border-radius: 3px;
-    }
-
-    /* ─── App Shell ──────────────────────────────────────────────────────────── */
-    #app { display: none; position: relative; z-index: 1; min-height: 100vh; }
-    #app.visible { display: block; }
-
-    /* ─── Top Nav ────────────────────────────────────────────────────────────── */
-    .navbar {
-      position: sticky; top: 0; z-index: 50;
-      background: rgba(9,13,22,0.8);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 0 28px;
-      display: flex; align-items: center; justify-content: space-between;
-      height: 60px;
-    }
-    .nav-brand {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 16px; font-weight: 700;
-    }
-    .nav-brand-icon {
-      width: 28px; height: 28px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-    }
-    .nav-right { display: flex; align-items: center; gap: 12px; }
-    .nav-user {
-      font-size: 13px; color: var(--txt2);
-      display: flex; align-items: center; gap: 8px;
-    }
-    .nav-avatar {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 600; color: #fff;
-    }
-
-    /* ─── Layout ─────────────────────────────────────────────────────────────── */
-    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
-
-    .page-header { margin-bottom: 28px; }
-    .page-title { font-size: 24px; font-weight: 700; }
-    .page-subtitle { font-size: 14px; color: var(--txt2); margin-top: 4px; }
-
-    /* ─── Add Tracker Card ───────────────────────────────────────────────────── */
-    .add-tracker-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: var(--r);
-      padding: 24px;
-      margin-bottom: 28px;
-      box-shadow: var(--shadow);
-    }
-    .add-tracker-card h2 {
-      font-size: 15px; font-weight: 600; margin-bottom: 16px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .add-tracker-form {
-      display: grid; grid-template-columns: 1fr 1fr auto;
-      gap: 12px; align-items: end;
-    }
-    @media (max-width: 700px) {
-      .add-tracker-form { grid-template-columns: 1fr; }
-    }
-
-    /* ─── API Base URL bar ───────────────────────────────────────────────────── */
-    .api-bar {
-      background: var(--bg3); border: 1px solid var(--border);
-      border-radius: var(--r-sm); padding: 10px 14px;
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 20px;
-      font-size: 13px;
-    }
-    .api-bar label { color: var(--txt2); white-space: nowrap; }
-    .api-bar input {
-      flex: 1; background: none; border: none; outline: none;
-      color: var(--teal); font-family: 'JetBrains Mono', monospace; font-size: 13px;
-    }
-    .api-status-dot {
-      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-      background: var(--txt3); transition: background 0.3s;
-    }
-    .api-status-dot.alive { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-dot 2s infinite; }
-    .api-status-dot.dead  { background: var(--red); }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    /* ─── Section Label ──────────────────────────────────────────────────────── */
-    .section-label {
-      font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
-      text-transform: uppercase; color: var(--txt3);
-      margin-bottom: 12px;
-    }
-
-    /* ─── Tracker Cards ──────────────────────────────────────────────────────── */
-    .trackers-list { display: flex; flex-direction: column; gap: 16px; }
-
-    .tracker-card {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: var(--r); overflow: hidden;
-      box-shadow: var(--shadow);
-      transition: border-color 0.2s;
-    }
-    .tracker-card:hover { border-color: var(--border-h); }
-
-    .tracker-header {
-      padding: 18px 20px;
-      display: flex; align-items: center; gap: 14px;
-      cursor: pointer;
-    }
-
-    .scraper-status {
-      display: flex; align-items: center; gap: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 3px 12px 3px 10px;
+      border-radius: 0 14px 14px 0;
+      white-space: nowrap;
       flex-shrink: 0;
+      z-index: 1;
+      margin-right: 8px;
+      user-select: none;
     }
-    .scraper-dot {
-      width: 10px; height: 10px; border-radius: 50%;
+    .ticker-track {
+      flex: 1;
+      overflow: hidden;
+      mask-image: linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%);
     }
-    .scraper-dot.idle    { background: var(--txt3); }
-    .scraper-dot.running {
-      background: var(--amber);
-      box-shadow: 0 0 8px var(--amber);
-      animation: pulse-run 1s ease-in-out infinite;
+    .ticker-inner {
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+      animation: ticker-scroll 28s linear infinite;
     }
-    .scraper-dot.done    {
-      background: var(--green);
-      box-shadow: 0 0 8px var(--green);
-      animation: pulse-dot 3s infinite;
+    .ticker-inner:hover { animation-play-state: paused; cursor: default; }
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
     }
-    .scraper-dot.error   { background: var(--red); }
-
-    @keyframes pulse-run {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50%       { transform: scale(1.4); opacity: 0.7; }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 48px;
+      font-size: 12.5px;
+      color: #0958d9;
+      font-weight: 500;
     }
-
-    .tracker-info { flex: 1; min-width: 0; }
-    .tracker-url {
-      font-size: 14px; font-weight: 600; color: var(--txt);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .tracker-meta {
-      display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap;
-    }
-    .tracker-prompt-pill {
-      font-size: 11px; color: var(--accent);
-      background: var(--accent-glow); padding: 2px 8px; border-radius: 100px;
-      border: 1px solid rgba(99,102,241,0.25);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;
-    }
-    .tracker-time {
-      font-size: 11px; color: var(--txt3);
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .tracker-actions { display: flex; align-items: center; gap: 8px; }
-
-    .scraper-label {
-      font-size: 11px; font-weight: 500;
-      padding: 3px 8px; border-radius: 100px;
-    }
-    .scraper-label.idle    { background: var(--surface); color: var(--txt3); }
-    .scraper-label.running { background: var(--amber-dim); color: var(--amber); }
-    .scraper-label.done    { background: var(--green-dim); color: var(--green); }
-    .scraper-label.error   { background: var(--red-dim);   color: var(--red); }
-
-    .chevron {
-      width: 16px; height: 16px; color: var(--txt3);
-      transition: transform 0.25s;
-    }
-    .tracker-card.expanded .chevron { transform: rotate(180deg); }
-
-    /* ─── Notices Panel ──────────────────────────────────────────────────────── */
-    .notices-panel {
-      border-top: 1px solid var(--border);
-      display: none;
-      padding: 0 20px 20px;
-    }
-    .tracker-card.expanded .notices-panel { display: block; }
-
-    .notices-toolbar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 0 12px;
-    }
-    .notices-count {
-      font-size: 13px; color: var(--txt2);
-      display: flex; align-items: center; gap: 6px;
-    }
-    .new-badge {
-      background: var(--green-dim); color: var(--green);
-      border: 1px solid rgba(34,197,94,0.25);
-      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 100px;
-      letter-spacing: 0.05em;
-    }
-
-    .notices-grid { display: flex; flex-direction: column; gap: 10px; }
-
-    .notice-item {
-      background: var(--bg3); border: 1px solid var(--border);
-      border-radius: var(--r-sm); padding: 14px 16px;
-      display: flex; gap: 14px; align-items: flex-start;
-      transition: border-color 0.2s, background 0.2s;
-      position: relative; overflow: hidden;
-    }
-    .notice-item.is-new {
-      border-color: rgba(34,197,94,0.3);
-      background: linear-gradient(135deg, rgba(34,197,94,0.04), var(--bg3));
-    }
-    .notice-item.is-new::before {
-      content: '';
-      position: absolute; top: 0; left: 0;
-      width: 3px; height: 100%;
-      background: var(--green);
-      border-radius: 3px 0 0 3px;
-    }
-    .notice-item.is-old::before {
-      content: '';
-      position: absolute; top: 0; left: 0;
-      width: 3px; height: 100%;
-      background: var(--txt3);
-      border-radius: 3px 0 0 3px;
-    }
-
-    .notice-marker {
-      flex-shrink: 0;
-      font-size: 10px; font-weight: 700; padding: 3px 8px;
-      border-radius: 100px; letter-spacing: 0.06em;
-      margin-top: 1px;
-    }
-    .notice-marker.new {
-      background: var(--green-dim); color: var(--green);
-      border: 1px solid rgba(34,197,94,0.3);
-      animation: new-glow 2s ease-in-out infinite;
-    }
-    .notice-marker.old {
-      background: var(--surface); color: var(--txt3);
-      border: 1px solid var(--border);
-    }
-
-    @keyframes new-glow {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
-      50% { box-shadow: 0 0 8px 2px rgba(34,197,94,0.25); }
-    }
-
-    .notice-body { flex: 1; min-width: 0; }
-    .notice-title {
-      font-size: 14px; font-weight: 600; color: var(--txt);
-      margin-bottom: 4px; line-height: 1.4;
-    }
-    .notice-summary {
-      font-size: 12px; color: var(--txt2); line-height: 1.5;
-      margin-bottom: 8px;
-    }
-    .notice-footer {
-      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    }
-    .notice-date {
-      font-size: 11px; color: var(--txt3);
-      font-family: 'JetBrains Mono', monospace;
-      display: flex; align-items: center; gap: 4px;
-    }
-    .notice-link {
-      font-size: 11px; color: var(--accent);
-      text-decoration: none; display: flex; align-items: center; gap: 3px;
-    }
-    .notice-link:hover { text-decoration: underline; }
-
-    .notices-empty {
-      text-align: center; padding: 32px 0;
-      color: var(--txt3); font-size: 13px;
-    }
-    .notices-empty-icon { font-size: 28px; margin-bottom: 8px; }
-
-    .notices-loading {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 24px; color: var(--txt3); font-size: 13px;
-    }
-    .spin {
-      width: 16px; height: 16px;
-      border: 2px solid var(--border);
-      border-top-color: var(--accent);
+    .ticker-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: #1677ff;
       border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+      animation: pulse-ticker 2s ease-in-out infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ─── Empty State ────────────────────────────────────────────────────────── */
-    .trackers-empty {
-      text-align: center; padding: 64px 24px;
-      color: var(--txt3);
+    @keyframes pulse-ticker {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
     }
-    .trackers-empty-icon { font-size: 40px; margin-bottom: 12px; }
-    .trackers-empty h3 { font-size: 16px; color: var(--txt2); margin-bottom: 6px; }
-    .trackers-empty p { font-size: 13px; }
-
-    /* ─── Toast ──────────────────────────────────────────────────────────────── */
-    #toast-container {
-      position: fixed; bottom: 24px; right: 24px;
-      display: flex; flex-direction: column; gap: 10px;
-      z-index: 9999;
+    .ticker-date {
+      font-size: 11px;
+      color: #8c8c8c;
+      font-weight: 400;
     }
-    .toast {
-      padding: 12px 18px; border-radius: var(--r-sm);
-      font-size: 13px; font-weight: 500;
-      background: var(--bg2); border: 1px solid var(--border);
-      box-shadow: var(--shadow-lg);
-      animation: slide-in 0.3s ease;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .toast.success { border-color: rgba(34,197,94,0.3); color: var(--green); }
-    .toast.error   { border-color: rgba(239,68,68,0.3); color: var(--red); }
-    .toast.info    { border-color: rgba(99,102,241,0.3); color: var(--accent); }
-
-    @keyframes slide-in {
-      from { transform: translateX(100%); opacity: 0; }
-      to   { transform: translateX(0);    opacity: 1; }
+    .ticker-sep {
+      color: #91caff;
+      margin-right: 48px;
     }
 
-    /* ─── Misc ───────────────────────────────────────────────────────────────── */
-    .divider { height: 1px; background: var(--border); margin: 24px 0; }
+    /* ── App shell ───────────────────────────────────────────────────────────── */
+    .app-header {
+      background: #fff;
+      border-bottom: 1px solid #f0f0f0;
+      box-shadow: 0 1px 3px rgba(0, 21, 41, 0.06);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 58px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #141414;
+      user-select: none;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #1677ff, #4096ff);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .app-content {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+    }
+
+    /* ── API status bar ──────────────────────────────────────────────────────── */
+    .api-bar {
+      background: #fff;
+      border: 1px solid #f0f0f0;
+      border-radius: 8px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .api-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #d9d9d9;
+      flex-shrink: 0;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .api-dot.ok  {
+      background: #52c41a;
+      box-shadow: 0 0 0 3px rgba(82, 196, 26, 0.15);
+    }
+    .api-dot.err { background: #ff4d4f; }
+
+    /* ── Notice cards ────────────────────────────────────────────────────────── */
+    .notice-unread {
+      border-left: 3px solid #1677ff !important;
+    }
+    .notice-read {
+      border-left: 3px solid #d9d9d9 !important;
+      opacity: 0.72;
+    }
+
+    /* ── Section label ───────────────────────────────────────────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8c8c8c;
+      margin-bottom: 10px;
+    }
+
+    /* ── Login page ──────────────────────────────────────────────────────────── */
+    .login-bg {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f0f7ff 0%, #f5f7fa 60%, #fff7e6 100%);
+    }
   </style>
 </head>
 <body>
 
-<!-- ─── Auth Screen ──────────────────────────────────────────────────────────── -->
-<div id="auth-screen">
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-icon">📡</div>
-      <div>
-        <div class="auth-logo-text">Notice Tracker</div>
-        <div class="auth-logo-sub">Test Console</div>
-      </div>
-    </div>
-
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
-      <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
-    </div>
-
-    <div id="login-form">
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" type="email" id="login-email" placeholder="you@example.com" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" type="password" id="login-password" placeholder="••••••••" />
-      </div>
-      <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
-    </div>
-
-    <div id="signup-form" style="display:none">
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" type="email" id="signup-email" placeholder="you@example.com" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" type="password" id="signup-password" placeholder="min 6 chars" />
-      </div>
-      <button class="btn btn-primary" id="signup-btn" onclick="doSignup()">Create Account</button>
-    </div>
-
-    <div class="auth-error" id="auth-error"></div>
-
-
+<div id="root">
+  <div style="display:flex;align-items:center;justify-content:center;height:100vh">
+    <div style="font-family:sans-serif;color:#8c8c8c;font-size:14px">Loading…</div>
   </div>
 </div>
 
-<!-- ─── App ─────────────────────────────────────────────────────────────────── -->
-<div id="app">
-  <nav class="navbar">
-    <div class="nav-brand">
-      <div class="nav-brand-icon">📡</div>
-      Notice Tracker
-    </div>
-    <div class="nav-right">
-      <div class="nav-user">
-        <div class="nav-avatar" id="nav-avatar">?</div>
-        <span id="nav-email">—</span>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
-    </div>
-  </nav>
-
-  <div class="container">
-    <div class="page-header">
-      <div class="page-title">🗂 Trackers</div>
-      <div class="page-subtitle">Manage URLs · Monitor scraper · Read notices</div>
-    </div>
-
-    <!-- API Base URL -->
-    <div class="api-bar">
-      <div class="api-status-dot" id="api-dot" title="API status"></div>
-      <label>API&nbsp;&nbsp;</label>
-      <input type="text" id="api-base" value="" placeholder="(same origin)" oninput="pingApi()" />
-      <button class="btn btn-ghost btn-sm" onclick="pingApi()">Ping</button>
-      <span id="api-status-text" style="font-size:12px;color:var(--txt3)">—</span>
-    </div>
-
-    <!-- Add Tracker -->
-    <div class="add-tracker-card">
-      <h2>➕ Add Tracker</h2>
-      <div class="add-tracker-form">
-        <div class="form-group" style="margin:0">
-          <label class="form-label">URL</label>
-          <input class="form-input" type="url" id="new-url" placeholder="https://university.edu/notices" />
-        </div>
-        <div class="form-group" style="margin:0">
-          <label class="form-label">Prompt</label>
-          <input class="form-input" type="text" id="new-prompt" placeholder="Track scholarship notices only" />
-        </div>
-        <button class="btn btn-primary" style="padding:11px 24px;white-space:nowrap" onclick="addTracker()">
-          Track
-        </button>
-      </div>
-    </div>
-
-    <!-- Tracker List -->
-    <div class="section-label" id="trackers-label">Your Trackers</div>
-    <div class="trackers-list" id="trackers-list">
-      <div class="notices-loading"><div class="spin"></div> Loading trackers…</div>
-    </div>
-  </div>
-</div>
-
-<!-- Toast Container -->
-<div id="toast-container"></div>
-
-<!-- ─── Firebase SDK ──────────────────────────────────────────────────────────── -->
+<!-- ── Firebase ESM (deferred — runs after HTML is parsed) ─────────────────── -->
 <script type="module">
-  import { initializeApp }                        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-  import { getAuth, signInWithEmailAndPassword,
-           createUserWithEmailAndPassword,
-           signOut, onAuthStateChanged }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { initializeApp }
+    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import {
+    getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    signOut, onAuthStateChanged,
+  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-  // ── ⚠️  REPLACE THIS WITH YOUR FIREBASE WEB APP CONFIG ──────────────────────
-  // Firebase Console → Project Settings → Your apps → Web app → SDK setup
   const FIREBASE_CONFIG = {
-    apiKey:            "AIzaSyAjgIJZvWcBvBHUXvD4ISITQGYMTE-kQ0U",
-    authDomain:        "notice-watch.firebaseapp.com",
-    projectId:         "notice-watch",
-    storageBucket:     "notice-watch.firebasestorage.app",
-    messagingSenderId: "946705632610",
-    appId:             "1:946705632610:web:b9bb208c952c38ee84303b",
-    measurementId:     "G-V4B0LNV3YQ",
+    apiKey:            'AIzaSyAjgIJZvWcBvBHUXvD4ISITQGYMTE-kQ0U',
+    authDomain:        'notice-watch.firebaseapp.com',
+    projectId:         'notice-watch',
+    storageBucket:     'notice-watch.firebasestorage.app',
+    messagingSenderId: '946705632610',
+    appId:             '1:946705632610:web:b9bb208c952c38ee84303b',
   };
-  // ─────────────────────────────────────────────────────────────────────────────
 
-  const firebaseApp = initializeApp(FIREBASE_CONFIG);
-  const auth        = getAuth(firebaseApp);
+  const fbApp = initializeApp(FIREBASE_CONFIG);
+  const auth  = getAuth(fbApp);
 
-  // Expose to window so non-module functions can call them
-  window._auth = auth;
-  window._signIn  = (email, pass) => signInWithEmailAndPassword(auth, email, pass);
-  window._signUp  = (email, pass) => createUserWithEmailAndPassword(auth, email, pass);
-  window._signOut = ()            => signOut(auth);
-  window._getToken = ()           => auth.currentUser?.getIdToken();
+  window._fb = {
+    onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb),
+    signIn:   (e, p) => signInWithEmailAndPassword(auth, e, p),
+    signUp:   (e, p) => createUserWithEmailAndPassword(auth, e, p),
+    signOut:  ()     => signOut(auth),
+    getToken: ()     => auth.currentUser?.getIdToken() ?? Promise.resolve(null),
+  };
 
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      document.getElementById('auth-screen').classList.add('hidden');
-      document.getElementById('app').classList.add('visible');
-      document.getElementById('nav-email').textContent = user.email ?? '';
-      document.getElementById('nav-avatar').textContent = (user.email?.[0] ?? '?').toUpperCase();
-      window._currentUser = user;
-      loadTrackers();
-      pingApi();
-      startPolling();
-    } else {
-      document.getElementById('auth-screen').classList.remove('hidden');
-      document.getElementById('app').classList.remove('visible');
-      stopPolling();
-      window._currentUser = null;
-    }
-  });
+  document.dispatchEvent(new Event('firebase-ready'));
 </script>
 
-<script>
-  // ─── State ──────────────────────────────────────────────────────────────────
-  let trackers = [];              // [{...tracker, status:'idle'|'running'|'done'|'error', notices:[]}]
-  let knownNoticeIds = new Set(); // persisted in sessionStorage per tracker
-  let pollingTimer  = null;
-  let seenThisSession = JSON.parse(sessionStorage.getItem('seenNotices') || '{}');
+<!-- ── React App ─────────────────────────────────────────────────────────────── -->
+<script type="text/babel">
+  const { useState, useEffect, useRef, useCallback, useMemo } = React;
+  const {
+    ConfigProvider, Card, Button, Input, Form, Tag, Badge,
+    Space, Typography, Spin, Avatar, Tooltip, Empty,
+    Tabs, Alert, Collapse, Divider, message,
+  } = antd;
+  const { Text, Title, Link } = Typography;
 
-  function apiBase() { return document.getElementById('api-base').value.replace(/\/$/, ''); }
+  // ── API ──────────────────────────────────────────────────────────────────────
 
-  // ─── Auth Helpers ────────────────────────────────────────────────────────────
-  function switchTab(tab) {
-    document.getElementById('login-form').style.display  = tab === 'login'  ? '' : 'none';
-    document.getElementById('signup-form').style.display = tab === 'signup' ? '' : 'none';
-    document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
-    document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
-    hideAuthError();
-  }
-
-  function showAuthError(msg) {
-    const el = document.getElementById('auth-error');
-    el.textContent = msg; el.classList.add('show');
-  }
-  function hideAuthError() { document.getElementById('auth-error').classList.remove('show'); }
-
-  async function doLogin() {
-    hideAuthError();
-    const email = document.getElementById('login-email').value.trim();
-    const pass  = document.getElementById('login-password').value;
-    const btn   = document.getElementById('login-btn');
-    btn.disabled = true; btn.textContent = 'Signing in…';
-    try { await window._signIn(email, pass); }
-    catch(e) { showAuthError(friendlyAuthError(e)); btn.disabled = false; btn.textContent = 'Sign In'; }
-  }
-
-  async function doSignup() {
-    hideAuthError();
-    const email = document.getElementById('signup-email').value.trim();
-    const pass  = document.getElementById('signup-password').value;
-    const btn   = document.getElementById('signup-btn');
-    btn.disabled = true; btn.textContent = 'Creating…';
-    try { await window._signUp(email, pass); }
-    catch(e) { showAuthError(friendlyAuthError(e)); btn.disabled = false; btn.textContent = 'Create Account'; }
-  }
-
-  async function doLogout() { await window._signOut(); }
-
-  function friendlyAuthError(e) {
-    const code = e?.code ?? '';
-    if (code.includes('invalid-email'))       return 'Invalid email address.';
-    if (code.includes('user-not-found'))      return 'No account with that email.';
-    if (code.includes('wrong-password'))      return 'Incorrect password.';
-    if (code.includes('email-already'))       return 'Email already in use.';
-    if (code.includes('weak-password'))       return 'Password must be at least 6 characters.';
-    if (code.includes('network-request-failed')) return 'Network error — is the Firebase config correct?';
-    return e?.message ?? 'Unknown error.';
-  }
-
-  // Allow Enter key on auth inputs
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    if (document.getElementById('login-form').style.display !== 'none') doLogin();
-    else doSignup();
-  });
-
-  // ─── API ─────────────────────────────────────────────────────────────────────
-  async function apiFetch(path, opts = {}) {
-    const token = await window._getToken?.();
-    const res = await fetch(apiBase() + path, {
+  async function apiFetch(base, path, opts = {}) {
+    const token = await window._fb?.getToken?.();
+    const url   = (base || '').replace(/\/$/, '') + path;
+    const res   = await fetch(url, {
       ...opts,
       headers: {
         'Content-Type': 'application/json',
@@ -763,274 +264,652 @@
       const body = await res.json().catch(() => ({}));
       throw new Error(body.message ?? `HTTP ${res.status}`);
     }
-    if (res.status === 204) return null;
-    return res.json();
-  }
-
-  // ─── Ping ────────────────────────────────────────────────────────────────────
-  async function pingApi() {
-    const dot  = document.getElementById('api-dot');
-    const text = document.getElementById('api-status-text');
-    dot.className = 'api-status-dot';
-    text.textContent = 'Checking…';
-    try {
-      const t0 = Date.now();
-      await fetch(apiBase() + '/health');
-      const ms = Date.now() - t0;
-      dot.className = 'api-status-dot alive';
-      text.textContent = `Online · ${ms}ms`;
-    } catch {
-      dot.className = 'api-status-dot dead';
-      text.textContent = 'Offline — is the server running?';
-    }
-  }
-
-  // ─── Load Trackers ────────────────────────────────────────────────────────────
-  async function loadTrackers() {
-    try {
-      const data = await apiFetch('/api/trackers');
-      trackers = (data.trackers ?? []).map(t => ({
-        ...t,
-        status: t.lastCheckedAt ? 'done' : 'idle',
-        notices: [],
-        noticesLoaded: false,
-      }));
-      renderTrackers();
-    } catch(e) {
-      document.getElementById('trackers-list').innerHTML =
-        `<div style="color:var(--red);font-size:13px;padding:16px">${e.message}</div>`;
-    }
-  }
-
-  // ─── Add Tracker ──────────────────────────────────────────────────────────────
-  async function addTracker() {
-    const url    = document.getElementById('new-url').value.trim();
-    const prompt = document.getElementById('new-prompt').value.trim();
-    if (!url)    return toast('Enter a URL', 'error');
-    if (!prompt) return toast('Enter a prompt', 'error');
-    try {
-      await apiFetch('/api/trackers', {
-        method: 'POST',
-        body: JSON.stringify({ url, prompt }),
-      });
-      document.getElementById('new-url').value    = '';
-      document.getElementById('new-prompt').value = '';
-      toast('Tracker created — scrape queued!', 'success');
-      await loadTrackers();
-    } catch(e) { toast(e.message, 'error'); }
-  }
-
-  // ─── Delete Tracker ───────────────────────────────────────────────────────────
-  async function deleteTracker(id) {
-    try {
-      await apiFetch(`/api/trackers/${id}`, { method: 'DELETE' });
-      trackers = trackers.filter(t => t.id !== id);
-      renderTrackers();
-      toast('Tracker removed', 'info');
-    } catch(e) { toast(e.message, 'error'); }
-  }
-
-  // ─── Toggle Tracker ───────────────────────────────────────────────────────────
-  async function toggleTracker(id) {
-    try {
-      const res = await apiFetch(`/api/trackers/${id}`, { method: 'PATCH' });
-      const t = trackers.find(t => t.id === id);
-      if (t) t.active = res.active;
-      renderTrackers();
-    } catch(e) { toast(e.message, 'error'); }
-  }
-
-  // ─── Load Notices ─────────────────────────────────────────────────────────────
-  async function loadNotices(trackerId) {
-    const t = trackers.find(t => t.id === trackerId);
-    if (!t) return;
-    const panelEl = document.getElementById(`notices-${trackerId}`);
-    if (!panelEl) return;
-    panelEl.innerHTML = `<div class="notices-loading"><div class="spin"></div> Fetching notices…</div>`;
-    try {
-      const data   = await apiFetch(`/api/notices/${trackerId}`);
-      const fresh  = data.notices ?? [];
-
-      // Mark as NEW if not seen before in this session
-      if (!seenThisSession[trackerId]) seenThisSession[trackerId] = [];
-      const seenSet = new Set(seenThisSession[trackerId]);
-
-      t.notices = fresh.map(n => ({ ...n, isNew: !seenSet.has(n.id) }));
-      t.noticesLoaded = true;
-
-      // Save seen ids for this session
-      seenThisSession[trackerId] = fresh.map(n => n.id);
-      sessionStorage.setItem('seenNotices', JSON.stringify(seenThisSession));
-
-      renderNotices(trackerId);
-    } catch(e) {
-      panelEl.innerHTML = `<div style="color:var(--red);font-size:13px;padding:16px">${e.message}</div>`;
-    }
-  }
-
-  // ─── Polling ──────────────────────────────────────────────────────────────────
-  function startPolling() {
-    stopPolling();
-    pollingTimer = setInterval(async () => {
-      if (!window._currentUser) return;
-      try {
-        const data     = await apiFetch('/api/trackers');
-        const incoming = data.trackers ?? [];
-        let changed    = false;
-
-        for (const fresh of incoming) {
-          const local = trackers.find(t => t.id === fresh.id);
-          if (!local) { changed = true; continue; }
-
-          // Detect if scraper just finished (lastCheckedAt changed)
-          const freshTs = fresh.lastCheckedAt?._seconds ?? 0;
-          const localTs = local.lastCheckedAt?._seconds ?? 0;
-          if (freshTs > localTs) {
-            local.status = 'done';
-            local.lastCheckedAt = fresh.lastCheckedAt;
-            local.lastContentHash = fresh.lastContentHash;
-            changed = true;
-            // Reload notices for expanded cards
-            const card = document.getElementById(`card-${local.id}`);
-            if (card?.classList.contains('expanded')) loadNotices(local.id);
-          }
-
-          // Mark running if recently created and no lastCheckedAt yet
-          if (!fresh.lastCheckedAt) local.status = 'running';
-        }
-
-        if (changed) renderTrackers();
-      } catch { /* silent */ }
-    }, 6000);
-  }
-
-  function stopPolling() {
-    if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; }
-  }
-
-  // ─── Expand / Collapse ────────────────────────────────────────────────────────
-  function toggleCard(id) {
-    const card = document.getElementById(`card-${id}`);
-    const isExpanded = card.classList.toggle('expanded');
-    if (isExpanded) {
-      const t = trackers.find(t => t.id === id);
-      if (t && !t.noticesLoaded) loadNotices(id);
-    }
-  }
-
-  // ─── Render Trackers ──────────────────────────────────────────────────────────
-  function renderTrackers() {
-    const list = document.getElementById('trackers-list');
-    if (!trackers.length) {
-      list.innerHTML = `
-        <div class="trackers-empty">
-          <div class="trackers-empty-icon">🔍</div>
-          <h3>No trackers yet</h3>
-          <p>Add a URL above to start monitoring notices.</p>
-        </div>`;
-      return;
-    }
-
-    list.innerHTML = trackers.map(t => `
-      <div class="tracker-card" id="card-${t.id}">
-        <div class="tracker-header" onclick="toggleCard('${t.id}')">
-          <div class="scraper-status">
-            <div class="scraper-dot ${t.status}" title="${t.status}"></div>
-          </div>
-          <div class="tracker-info">
-            <div class="tracker-url" title="${escHtml(t.url)}">${escHtml(t.url)}</div>
-            <div class="tracker-meta">
-              <div class="tracker-prompt-pill">${escHtml(t.prompt)}</div>
-              <div class="tracker-time">${t.lastCheckedAt ? '⏱ ' + relTime(t.lastCheckedAt._seconds) : 'Never checked'}</div>
-            </div>
-          </div>
-          <div class="tracker-actions" onclick="event.stopPropagation()">
-            <span class="scraper-label ${t.status}">${statusLabel(t.status)}</span>
-            <button class="btn btn-ghost btn-sm" onclick="toggleTracker('${t.id}')" title="${t.active ? 'Pause' : 'Resume'}">
-              ${t.active ? '⏸' : '▶️'}
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="deleteTracker('${t.id}')">Delete</button>
-          </div>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </div>
-
-        <div class="notices-panel">
-          <div class="notices-toolbar">
-            <div class="notices-count">Notices</div>
-            <button class="btn btn-teal btn-sm" onclick="loadNotices('${t.id}')">↻ Refresh</button>
-          </div>
-          <div id="notices-${t.id}">
-            ${t.noticesLoaded ? renderNoticesHTML(t) : '<div class="notices-loading"><div class="spin"></div> Click to load notices…</div>'}
-          </div>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  // ─── Render Notices ───────────────────────────────────────────────────────────
-  function renderNotices(trackerId) {
-    const t = trackers.find(t => t.id === trackerId);
-    const el = document.getElementById(`notices-${trackerId}`);
-    if (!t || !el) return;
-    el.innerHTML = renderNoticesHTML(t);
-
-    // Update count badge in toolbar
-    const newCount = t.notices.filter(n => n.isNew).length;
-    const countEl  = el.closest('.notices-panel')?.querySelector('.notices-count');
-    if (countEl) {
-      countEl.innerHTML = `Notices <span class="new-badge">${newCount} new</span>`;
-    }
-  }
-
-  function renderNoticesHTML(t) {
-    if (!t.notices.length) return `
-      <div class="notices-empty">
-        <div class="notices-empty-icon">📭</div>
-        No notices found yet. The scraper will check on the next cycle.
-      </div>`;
-
-    return `<div class="notices-grid">${t.notices.map(n => `
-      <div class="notice-item ${n.isNew ? 'is-new' : 'is-old'}">
-        <span class="notice-marker ${n.isNew ? 'new' : 'old'}">${n.isNew ? 'NEW' : 'OLD'}</span>
-        <div class="notice-body">
-          <div class="notice-title">${escHtml(n.title)}</div>
-          <div class="notice-summary">${escHtml(n.summary)}</div>
-          <div class="notice-footer">
-            ${n.publishedDate ? `<span class="notice-date">📅 ${escHtml(n.publishedDate)}</span>` : ''}
-            ${n.link ? `<a class="notice-link" href="${escHtml(n.link)}" target="_blank" rel="noopener">🔗 View</a>` : ''}
-          </div>
-        </div>
-      </div>`).join('')}</div>`;
-  }
-
-  // ─── Toast ────────────────────────────────────────────────────────────────────
-  function toast(msg, type = 'info') {
-    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
-    const el = document.createElement('div');
-    el.className = `toast ${type}`;
-    el.innerHTML = `<span>${icon}</span><span>${escHtml(msg)}</span>`;
-    document.getElementById('toast-container').appendChild(el);
-    setTimeout(() => el.remove(), 3500);
-  }
-
-  // ─── Helpers ──────────────────────────────────────────────────────────────────
-  function escHtml(str) {
-    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return res.status === 204 ? null : res.json();
   }
 
   function relTime(seconds) {
-    const diff = Math.floor(Date.now()/1000) - seconds;
-    if (diff < 60)   return 'Just now';
-    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-    if (diff < 86400)return `${Math.floor(diff/3600)}h ago`;
-    return `${Math.floor(diff/86400)}d ago`;
+    if (!seconds) return '—';
+    const d = Math.floor(Date.now() / 1000) - seconds;
+    if (d < 60)    return 'Just now';
+    if (d < 3600)  return `${Math.floor(d / 60)}m ago`;
+    if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+    return `${Math.floor(d / 86400)}d ago`;
   }
 
-  function statusLabel(s) {
-    return { idle: 'Idle', running: 'Scraping…', done: 'Up to date', error: 'Error' }[s] ?? s;
+  function isUnread(n) { return !n.readAt; }
+
+  // ── Marquee Ticker ───────────────────────────────────────────────────────────
+
+  function UnreadTicker({ notices }) {
+    if (!notices.length) return null;
+    // Double the items for a seamless CSS loop (animate -50% of total width)
+    const doubled = [...notices, ...notices];
+    return (
+      <div className="ticker-bar">
+        <div className="ticker-pill">🔔 UNREAD</div>
+        <div className="ticker-track">
+          <div className="ticker-inner">
+            {doubled.map((n, i) => (
+              <span key={`${n.id}-${i}`} className="ticker-item">
+                <span className="ticker-dot" />
+                {n.title}
+                {n.publishedDate && (
+                  <span className="ticker-date">({n.publishedDate})</span>
+                )}
+                <span className="ticker-sep">·</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
+
+  // ── Notice Item ──────────────────────────────────────────────────────────────
+
+  function NoticeItem({ notice, onMarkRead }) {
+    const [busy, setBusy] = useState(false);
+    const read = !isUnread(notice);
+
+    async function handleMark(e) {
+      e.stopPropagation();
+      setBusy(true);
+      try { await onMarkRead(notice.id); }
+      finally { setBusy(false); }
+    }
+
+    return (
+      <Card
+        size="small"
+        className={read ? 'notice-read' : 'notice-unread'}
+        style={{ marginBottom: 8, borderRadius: 8 }}
+        bodyStyle={{ padding: '12px 16px' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+
+            {/* Title row */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
+              <Space align="center" size={6} style={{ flexWrap: 'wrap', flex: 1 }}>
+                <Badge color={read ? '#d9d9d9' : '#1677ff'} />
+                <Text
+                  strong
+                  style={{ fontSize: 13.5, color: read ? '#8c8c8c' : '#141414', lineHeight: 1.4 }}
+                >
+                  {notice.title}
+                </Text>
+                {!read && (
+                  <Tag
+                    color="blue"
+                    style={{ fontSize: 10, padding: '0 5px', lineHeight: '17px', borderRadius: 4 }}
+                  >
+                    UNREAD
+                  </Tag>
+                )}
+              </Space>
+              {!read ? (
+                <Button
+                  type="link"
+                  size="small"
+                  loading={busy}
+                  onClick={handleMark}
+                  style={{ fontSize: 12, padding: 0, height: 'auto', flexShrink: 0, color: '#52c41a' }}
+                >
+                  ✓ Mark as read
+                </Button>
+              ) : (
+                <Tag style={{ fontSize: 10, flexShrink: 0 }}>Read</Tag>
+              )}
+            </div>
+
+            {/* Summary */}
+            <Text
+              style={{ fontSize: 12, color: '#595959', lineHeight: 1.65, display: 'block', marginBottom: 7 }}
+            >
+              {notice.summary}
+            </Text>
+
+            {/* Footer */}
+            <Space size={16} wrap>
+              {notice.publishedDate && (
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  📅 {notice.publishedDate}
+                </Text>
+              )}
+              {notice.link && (
+                <a
+                  href={notice.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: 11, color: '#1677ff' }}
+                >
+                  🔗 View notice
+                </a>
+              )}
+            </Space>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // ── Tracker Card ─────────────────────────────────────────────────────────────
+
+  const STATUS_COLOR = { idle: '#8c8c8c', running: '#fa8c16', done: '#52c41a', error: '#ff4d4f' };
+  const STATUS_LABEL = { idle: 'Idle', running: 'Scraping…', done: 'Up to date', error: 'Error' };
+
+  function TrackerCard({ tracker, apiBase, onDelete, onToggle, onNoticesUpdated, msgApi }) {
+    const [open, setOpen]           = useState(false);
+    const [notices, setNotices]     = useState(null);
+    const [loading, setLoading]     = useState(false);
+
+    async function fetchNotices() {
+      setLoading(true);
+      try {
+        const data = await apiFetch(apiBase, `/api/notices/${tracker.id}`);
+        const list = data.notices ?? [];
+        setNotices(list);
+        onNoticesUpdated(tracker.id, list);
+      } catch (e) {
+        msgApi.error(`Failed to load notices: ${e.message}`);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function toggleOpen() {
+      const next = !open;
+      setOpen(next);
+      if (next && notices === null) fetchNotices();
+    }
+
+    async function markRead(noticeId) {
+      try {
+        await apiFetch(apiBase, `/api/notices/${noticeId}/read`, { method: 'PATCH' });
+        const updated = notices.map(n => n.id === noticeId ? { ...n, readAt: true } : n);
+        setNotices(updated);
+        onNoticesUpdated(tracker.id, updated);
+        msgApi.success('Marked as read');
+      } catch (e) {
+        msgApi.error(e.message);
+      }
+    }
+
+    const unread = notices ? notices.filter(isUnread).length : null;
+    const color  = STATUS_COLOR[tracker.status] ?? '#8c8c8c';
+    const label  = STATUS_LABEL[tracker.status] ?? tracker.status;
+
+    return (
+      <Card
+        style={{ marginBottom: 12, borderRadius: 10, overflow: 'hidden' }}
+        bodyStyle={{ padding: 0 }}
+        styles={{ body: { padding: 0 } }}
+      >
+        {/* ── Header (click to expand) ── */}
+        <div
+          onClick={toggleOpen}
+          style={{
+            padding: '14px 18px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            background: '#fff',
+          }}
+        >
+          <Badge color={color} title={label} />
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              strong
+              style={{ display: 'block', fontSize: 13.5, color: '#141414', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={tracker.url}
+            >
+              {tracker.url}
+            </Text>
+            <Space size={6} style={{ marginTop: 3, flexWrap: 'wrap' }}>
+              <Tag color="geekblue" style={{ fontSize: 11, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {tracker.prompt}
+              </Tag>
+              <Text type="secondary" style={{ fontSize: 11, fontFamily: 'monospace' }}>
+                {tracker.lastCheckedAt
+                  ? `⏱ ${relTime(tracker.lastCheckedAt._seconds)}`
+                  : 'Never checked'}
+              </Text>
+            </Space>
+          </div>
+
+          {/* ── Actions (stop propagation so click doesn't expand) ── */}
+          <Space
+            size={6}
+            onClick={e => e.stopPropagation()}
+            style={{ flexShrink: 0 }}
+          >
+            <Tag
+              color={tracker.status === 'done' ? 'success' : tracker.status === 'error' ? 'error' : tracker.status === 'running' ? 'warning' : 'default'}
+              style={{ fontSize: 11 }}
+            >
+              {label}
+            </Tag>
+            {unread !== null && unread > 0 && (
+              <Badge count={unread} size="small" color="#1677ff" />
+            )}
+            <Tooltip title={tracker.active ? 'Pause' : 'Resume'}>
+              <Button
+                type="text"
+                size="small"
+                style={{ padding: '0 6px' }}
+                onClick={() => onToggle(tracker.id)}
+              >
+                {tracker.active ? '⏸' : '▶️'}
+              </Button>
+            </Tooltip>
+            <Button type="text" size="small" danger onClick={() => onDelete(tracker.id)}>
+              Delete
+            </Button>
+          </Space>
+
+          <Text type="secondary" style={{ fontSize: 12, flexShrink: 0, marginLeft: 4 }}>
+            {open ? '▲' : '▽'}
+          </Text>
+        </div>
+
+        {/* ── Notices panel ── */}
+        {open && (
+          <div style={{ borderTop: '1px solid #f5f5f5', padding: '0 18px 18px', background: '#fafafa' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0 10px' }}>
+              <Space size={8}>
+                <Text type="secondary" style={{ fontSize: 13 }}>Notices</Text>
+                {unread !== null && unread > 0 && (
+                  <Tag color="blue" style={{ fontSize: 11 }}>{unread} unread</Tag>
+                )}
+                {unread === 0 && notices !== null && (
+                  <Tag color="default" style={{ fontSize: 11 }}>All read</Tag>
+                )}
+              </Space>
+              <Button size="small" onClick={fetchNotices} loading={loading}>
+                ↻ Refresh
+              </Button>
+            </div>
+
+            {loading && (
+              <div style={{ textAlign: 'center', padding: 24 }}>
+                <Spin size="small" />
+                <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                  Loading notices…
+                </Text>
+              </div>
+            )}
+
+            {!loading && notices !== null && notices.length === 0 && (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={<Text type="secondary" style={{ fontSize: 12 }}>No notices yet. Scraper will check on the next cycle.</Text>}
+                style={{ paddingTop: 12, paddingBottom: 4 }}
+              />
+            )}
+
+            {!loading && notices !== null && notices.length > 0 &&
+              notices.map(n => (
+                <NoticeItem key={n.id} notice={n} onMarkRead={markRead} />
+              ))
+            }
+          </div>
+        )}
+      </Card>
+    );
+  }
+
+  // ── Login Page ───────────────────────────────────────────────────────────────
+
+  function LoginPage() {
+    const [tab, setTab]       = useState('login');
+    const [email, setEmail]   = useState('');
+    const [pass, setPass]     = useState('');
+    const [busy, setBusy]     = useState(false);
+    const [err, setErr]       = useState('');
+
+    const tabItems = [
+      { key: 'login',  label: 'Sign In'  },
+      { key: 'signup', label: 'Sign Up'  },
+    ];
+
+    async function submit() {
+      if (!email || !pass) return;
+      setErr(''); setBusy(true);
+      try {
+        if (tab === 'login') await window._fb.signIn(email, pass);
+        else                  await window._fb.signUp(email, pass);
+      } catch (e) {
+        const c = e?.code ?? '';
+        if (c.includes('invalid-email'))   setErr('Invalid email address.');
+        else if (c.includes('user-not-found')) setErr('No account with that email.');
+        else if (c.includes('wrong-password')) setErr('Incorrect password.');
+        else if (c.includes('email-already'))  setErr('Email already in use.');
+        else if (c.includes('weak-password'))  setErr('Password must be at least 6 characters.');
+        else setErr(e?.message ?? 'Unknown error.');
+      } finally { setBusy(false); }
+    }
+
+    return (
+      <div className="login-bg">
+        <Card
+          style={{ width: 420, borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}
+          bodyStyle={{ padding: '32px 36px' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+            <div className="brand-icon">📡</div>
+            <div>
+              <Text strong style={{ fontSize: 17, display: 'block', lineHeight: 1.3 }}>Notice Tracker</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>Web Console</Text>
+            </div>
+          </div>
+
+          <Tabs activeKey={tab} onChange={k => { setTab(k); setErr(''); }} items={tabItems} style={{ marginBottom: 18 }} />
+
+          <Form layout="vertical" onFinish={submit}>
+            <Form.Item label="Email" style={{ marginBottom: 14 }}>
+              <Input
+                type="email"
+                size="large"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoFocus
+              />
+            </Form.Item>
+            <Form.Item label="Password" style={{ marginBottom: 18 }}>
+              <Input.Password
+                size="large"
+                placeholder={tab === 'signup' ? 'Min 6 characters' : '••••••••'}
+                value={pass}
+                onChange={e => setPass(e.target.value)}
+                onPressEnter={submit}
+              />
+            </Form.Item>
+
+            {err && (
+              <Alert message={err} type="error" showIcon style={{ marginBottom: 14, borderRadius: 8 }} />
+            )}
+
+            <Button type="primary" size="large" block loading={busy} onClick={submit}>
+              {tab === 'login' ? 'Sign In' : 'Create Account'}
+            </Button>
+          </Form>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Main App ─────────────────────────────────────────────────────────────────
+
+  function MainApp({ user }) {
+    const [msgApi, ctxHolder]         = message.useMessage();
+    const [apiBase, setApiBase]       = useState('');
+    const [apiStatus, setApiStatus]   = useState(null); // null | 'ok' | 'err'
+    const [apiMs, setApiMs]           = useState(null);
+    const [trackers, setTrackers]     = useState([]);
+    const [loading, setLoading]       = useState(true);
+    const [addUrl, setAddUrl]         = useState('');
+    const [addPrompt, setAddPrompt]   = useState('');
+    const [adding, setAdding]         = useState(false);
+    const [noticeMap, setNoticeMap]   = useState({}); // { trackerId: Notice[] }
+    const pollerRef                   = useRef(null);
+
+    // All unread notices from all expanded tracker panels
+    const allUnread = useMemo(
+      () => Object.values(noticeMap).flat().filter(isUnread),
+      [noticeMap]
+    );
+
+    const api = useCallback(
+      (path, opts) => apiFetch(apiBase, path, opts),
+      [apiBase]
+    );
+
+    async function pingApi(base) {
+      const b = (base ?? apiBase);
+      setApiStatus(null);
+      try {
+        const t0 = Date.now();
+        await fetch((b || '').replace(/\/$/, '') + '/health');
+        setApiMs(Date.now() - t0);
+        setApiStatus('ok');
+      } catch {
+        setApiStatus('err');
+        setApiMs(null);
+      }
+    }
+
+    async function loadTrackers() {
+      setLoading(true);
+      try {
+        const data = await api('/api/trackers');
+        setTrackers((data.trackers ?? []).map(t => ({
+          ...t,
+          status: t.lastCheckedAt ? 'done' : 'idle',
+        })));
+      } catch (e) {
+        msgApi.error(`Could not load trackers: ${e.message}`);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function addTracker() {
+      const url    = addUrl.trim();
+      const prompt = addPrompt.trim();
+      if (!url || !prompt) { msgApi.warning('Enter both URL and prompt'); return; }
+      setAdding(true);
+      try {
+        await api('/api/trackers', {
+          method: 'POST',
+          body: JSON.stringify({ url, prompt }),
+        });
+        setAddUrl(''); setAddPrompt('');
+        msgApi.success('Tracker created — scrape queued!');
+        await loadTrackers();
+      } catch (e) { msgApi.error(e.message); }
+      finally { setAdding(false); }
+    }
+
+    async function deleteTracker(id) {
+      try {
+        await api(`/api/trackers/${id}`, { method: 'DELETE' });
+        setTrackers(prev => prev.filter(t => t.id !== id));
+        setNoticeMap(prev => { const n = { ...prev }; delete n[id]; return n; });
+        msgApi.info('Tracker removed');
+      } catch (e) { msgApi.error(e.message); }
+    }
+
+    async function toggleTracker(id) {
+      try {
+        const res = await api(`/api/trackers/${id}`, { method: 'PATCH' });
+        setTrackers(prev => prev.map(t => t.id === id ? { ...t, active: res.active } : t));
+      } catch (e) { msgApi.error(e.message); }
+    }
+
+    function handleNoticesUpdated(trackerId, notices) {
+      setNoticeMap(prev => ({ ...prev, [trackerId]: notices }));
+    }
+
+    // Poll for scraper status changes every 8s
+    useEffect(() => {
+      pollerRef.current = setInterval(async () => {
+        try {
+          const data = await api('/api/trackers');
+          setTrackers(prev => {
+            let changed = false;
+            const next = prev.map(local => {
+              const fresh = (data.trackers ?? []).find(t => t.id === local.id);
+              if (!fresh) return local;
+              const freshTs = fresh.lastCheckedAt?._seconds ?? 0;
+              const localTs = local.lastCheckedAt?._seconds ?? 0;
+              if (freshTs > localTs) { changed = true; return { ...local, ...fresh, status: 'done' }; }
+              return local;
+            });
+            return changed ? next : prev;
+          });
+        } catch { /* silent */ }
+      }, 8000);
+      return () => clearInterval(pollerRef.current);
+    }, [api]);
+
+    useEffect(() => {
+      loadTrackers();
+      pingApi();
+    }, []);
+
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f7fa' }}>
+        {ctxHolder}
+
+        {/* Header */}
+        <div className="app-header">
+          <div className="brand">
+            <div className="brand-icon">📡</div>
+            Notice Tracker
+          </div>
+          <Space size={10}>
+            <Avatar style={{ background: '#1677ff', fontSize: 13, width: 28, height: 28, lineHeight: '28px' }}>
+              {(user.email?.[0] ?? '?').toUpperCase()}
+            </Avatar>
+            <Text type="secondary" style={{ fontSize: 13 }}>{user.email}</Text>
+            <Button size="small" onClick={() => window._fb.signOut()}>Sign out</Button>
+          </Space>
+        </div>
+
+        {/* Unread ticker */}
+        <UnreadTicker notices={allUnread} />
+
+        {/* Content */}
+        <div className="app-content">
+
+          {/* API status */}
+          <div className="api-bar">
+            <div className={`api-dot${apiStatus === 'ok' ? ' ok' : apiStatus === 'err' ? ' err' : ''}`} />
+            <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>API</Text>
+            <Input
+              value={apiBase}
+              onChange={e => setApiBase(e.target.value)}
+              placeholder="(same origin)"
+              bordered={false}
+              style={{ flex: 1, fontSize: 12.5, fontFamily: 'monospace', padding: '0 4px' }}
+              onBlur={() => pingApi()}
+              onPressEnter={() => pingApi()}
+            />
+            <Button size="small" onClick={() => pingApi()}>Ping</Button>
+            <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+              {apiStatus === 'ok' ? `Online · ${apiMs}ms` : apiStatus === 'err' ? 'Offline' : '—'}
+            </Text>
+          </div>
+
+          {/* Add Tracker */}
+          <Card style={{ marginBottom: 24, borderRadius: 10 }} bodyStyle={{ padding: '18px 20px' }}>
+            <Text strong style={{ fontSize: 14, display: 'block', marginBottom: 14 }}>➕ Add Tracker</Text>
+            <Space.Compact style={{ width: '100%' }} size="middle">
+              <Input
+                placeholder="https://university.edu/notices"
+                value={addUrl}
+                onChange={e => setAddUrl(e.target.value)}
+                style={{ flex: 2 }}
+              />
+              <Input
+                placeholder="e.g. Track scholarship notices only"
+                value={addPrompt}
+                onChange={e => setAddPrompt(e.target.value)}
+                onPressEnter={addTracker}
+                style={{ flex: 2 }}
+              />
+              <Button type="primary" loading={adding} onClick={addTracker}>
+                Track
+              </Button>
+            </Space.Compact>
+          </Card>
+
+          {/* Tracker list */}
+          <div className="section-label">Your Trackers</div>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 48 }}>
+              <Spin />
+              <Text type="secondary" style={{ display: 'block', marginTop: 12, fontSize: 13 }}>
+                Loading trackers…
+              </Text>
+            </div>
+          ) : trackers.length === 0 ? (
+            <Card style={{ borderRadius: 10 }} bodyStyle={{ padding: '40px 24px' }}>
+              <Empty
+                description={
+                  <Space direction="vertical" size={2}>
+                    <Text type="secondary">No trackers yet</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      Add a URL above to start monitoring notices.
+                    </Text>
+                  </Space>
+                }
+              />
+            </Card>
+          ) : (
+            trackers.map(t => (
+              <TrackerCard
+                key={t.id}
+                tracker={t}
+                apiBase={apiBase}
+                onDelete={deleteTracker}
+                onToggle={toggleTracker}
+                onNoticesUpdated={handleNoticesUpdated}
+                msgApi={msgApi}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Root ─────────────────────────────────────────────────────────────────────
+
+  function App() {
+    const [fbReady, setFbReady] = useState(!!window._fb);
+    const [user, setUser]       = useState(undefined); // undefined = loading
+
+    useEffect(() => {
+      if (fbReady) return;
+      const h = () => setFbReady(true);
+      document.addEventListener('firebase-ready', h);
+      return () => document.removeEventListener('firebase-ready', h);
+    }, [fbReady]);
+
+    useEffect(() => {
+      if (!fbReady) return;
+      return window._fb.onAuthStateChanged(u => setUser(u ?? null));
+    }, [fbReady]);
+
+    if (!fbReady || user === undefined) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+          <Spin size="large" />
+        </div>
+      );
+    }
+
+    return user ? <MainApp user={user} /> : <LoginPage />;
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#1677ff',
+          borderRadius: 8,
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        },
+      }}
+    >
+      <App />
+    </ConfigProvider>
+  );
 </script>
 
 </body>

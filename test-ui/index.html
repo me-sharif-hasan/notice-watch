@@ -253,12 +253,13 @@
   // ── API ──────────────────────────────────────────────────────────────────────
 
   async function apiFetch(base, path, opts = {}) {
-    const token = await window._fb?.getToken?.();
-    const url   = (base || '').replace(/\/$/, '') + path;
-    const res   = await fetch(url, {
+    const token   = await window._fb?.getToken?.();
+    const url     = (base || '').replace(/\/$/, '') + path;
+    const hasBody = opts.body != null;
+    const res     = await fetch(url, {
       ...opts,
       headers: {
-        'Content-Type': 'application/json',
+        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(opts.headers ?? {}),
       },

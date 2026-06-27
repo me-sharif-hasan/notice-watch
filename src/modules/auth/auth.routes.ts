@@ -4,7 +4,7 @@ import { createOrGetUser, getMe } from './auth.service.js';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   // ── POST /api/auth/register ─────────────────────────────────────────────────
-  app.post('/register', { preHandler: verifyFirebaseToken }, async (request: FastifyRequest, reply: FastifyReply) => {
+  app.post('/auth/register', { preHandler: verifyFirebaseToken }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { uid, email, anonymous } = request.user;
     const user = await createOrGetUser(uid, email, anonymous);
     return reply.status(201).send({ user });

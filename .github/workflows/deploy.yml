@@ -21,6 +21,15 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Deploy Firestore indexes
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.SERVICE_ACCOUNT }}
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/sa.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
+          npx --yes firebase-tools@latest deploy --only firestore:indexes --project notice-watch --non-interactive
+          rm /tmp/sa.json
+
       - name: Sync source to server
         run: |
           rsync -avz --delete \

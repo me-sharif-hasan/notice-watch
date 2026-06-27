@@ -74,8 +74,8 @@ jobs:
             # Install node deps (skip postinstall — playwright install runs separately)
             npm ci --ignore-scripts
 
-            # Install chromium — skip OS validation (ubuntu26.04 not yet in playwright's allowlist)
-            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 npx playwright install chromium
+            # Install chromium via local playwright binary (skip OS check for ubuntu26.04)
+            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 ./node_modules/.bin/playwright install chromium
 
             # Build TypeScript
             npm run build

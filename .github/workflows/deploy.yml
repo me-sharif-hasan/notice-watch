@@ -21,14 +21,15 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.SERVICE_ACCOUNT }}
+
       - name: Deploy Firestore indexes
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.SERVICE_ACCOUNT }}
         run: |
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/sa.json
-          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json
-          npx --yes firebase-tools@latest deploy --only firestore:indexes --project notice-watch --non-interactive
-          rm /tmp/sa.json
+          npm install -g firebase-tools@13
+          firebase deploy --only firestore:indexes --project notice-watch --non-interactive
 
       - name: Sync source to server
         run: |

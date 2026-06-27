@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { verifyFirebaseToken } from '../auth/auth.middleware.js';
 import {
@@ -20,17 +20,14 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
 
   // ── GET /api/notices — cross-tracker feed ───────────────────────────────────
   // mode=global: no auth required; mode=mine: auth required
-  app.get(
+  app.get<{ Querystring: { limit?: string; startAfter?: string; mode?: string } }>(
     '/',
     {
       config: {
         rateLimit: { max: 60, timeWindow: '1 minute' },
       },
     },
-    async (
-      request: FastifyRequest<{ Querystring: { limit?: string; startAfter?: string; mode?: string } }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const queryResult = querySchema.safeParse(request.query);
       if (!queryResult.success) {
         return reply.status(400).send({
@@ -71,13 +68,10 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ── GET /api/notices/single/:noticeId ───────────────────────────────────────
-  app.get(
+  app.get<{ Params: { noticeId: string } }>(
     '/single/:noticeId',
     { preHandler: verifyFirebaseToken },
-    async (
-      request: FastifyRequest<{ Params: { noticeId: string } }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const notice = await getNoticeById(request.user.uid, request.params.noticeId);
       if (!notice) {
         return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Notice not found' });
@@ -87,16 +81,10 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ── GET /api/notices/:trackerId ─────────────────────────────────────────────
-  app.get(
+  app.get<{ Params: { trackerId: string }; Querystring: { limit?: string; startAfter?: string } }>(
     '/:trackerId',
     { preHandler: verifyFirebaseToken },
-    async (
-      request: FastifyRequest<{
-        Params: { trackerId: string };
-        Querystring: { limit?: string; startAfter?: string };
-      }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const queryResult = querySchema.safeParse(request.query);
       if (!queryResult.success) {
         return reply.status(400).send({
@@ -123,13 +111,10 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ── PATCH /api/notices/:noticeId/read ───────────────────────────────────────
-  app.patch(
+  app.patch<{ Params: { noticeId: string } }>(
     '/:noticeId/read',
     { preHandler: verifyFirebaseToken },
-    async (
-      request: FastifyRequest<{ Params: { noticeId: string } }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       try {
         await markNoticeAsRead(request.user.uid, request.params.noticeId);
         return reply.status(204).send();
@@ -142,13 +127,10 @@ export async function noticeRoutes(app: FastifyInstance): Promise<void> {
   );
 
   // ── PATCH /api/notices/:trackerId/read-all ──────────────────────────────────
-  app.patch(
+  app.patch<{ Params: { trackerId: string } }>(
     '/:trackerId/read-all',
     { preHandler: verifyFirebaseToken },
-    async (
-      request: FastifyRequest<{ Params: { trackerId: string } }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       try {
         await markAllRead(request.user.uid, request.params.trackerId);
         return reply.status(204).send();

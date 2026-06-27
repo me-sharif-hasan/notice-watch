@@ -11,13 +11,6 @@ const SCRAPE_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function getTrackerLimit(uid: string): Promise<number> {
-  const userSnap = await usersCol().doc(uid).get();
-  if (!userSnap.exists) return FREE_LIMIT;
-  const user = userSnap.data()!;
-  return user.subscribed ? SUBSCRIBED_LIMIT : FREE_LIMIT;
-}
-
 async function requireIntegrationToken(): Promise<boolean> {
   try {
     const snap = await settingsDoc().get();

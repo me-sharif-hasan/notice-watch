@@ -16,12 +16,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const { user, trackerLimit } = await getMe(request.user.uid);
       return reply.send({
         uid: user.uid,
+        email: user.email ?? null,
         anonymous: user.anonymous,
         subscribed: user.subscribed,
         subscribedUntil: user.subscribedUntil,
         coins: user.coins,
         trackerCount: user.trackerCount,
         trackerLimit,
+        createdAt: user.createdAt,
       });
     } catch (err) {
       const msg = (err as Error).message;
@@ -32,12 +34,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         const { user, trackerLimit } = await getMe(uid);
         return reply.send({
           uid: user.uid,
+          email: user.email ?? null,
           anonymous: user.anonymous,
           subscribed: user.subscribed,
           subscribedUntil: user.subscribedUntil,
           coins: user.coins,
           trackerCount: user.trackerCount,
           trackerLimit,
+          createdAt: user.createdAt,
         });
       }
       throw err;

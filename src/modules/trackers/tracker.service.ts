@@ -108,7 +108,7 @@ export async function listTrackers(uid: string): Promise<TrackerDoc[]> {
     .orderBy('createdAt', 'desc')
     .get();
 
-  return snap.docs.map((doc) => doc.data());
+  return snap.docs.map((doc) => ({ global: false, ...doc.data() }));
 }
 
 // ─── Get Tracker ──────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ export async function getTracker(uid: string, trackerId: string): Promise<Tracke
   if (!doc.exists) return null;
   const data = doc.data()!;
   if (data.uid !== uid) return null;
-  return data;
+  return { global: false, ...data };
 }
 
 // ─── Delete Tracker ───────────────────────────────────────────────────────────

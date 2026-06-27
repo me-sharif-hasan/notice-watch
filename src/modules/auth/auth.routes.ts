@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { Timestamp } from 'firebase-admin/firestore';
 import { verifyFirebaseToken } from './auth.middleware.js';
 import { createOrGetUser, getMe } from './auth.service.js';
+import { usersCol, trackersCol, devicesCol, getDb } from '../../services/firestore.js';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   // ── POST /api/auth/register ─────────────────────────────────────────────────
@@ -46,5 +48,34 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       }
       throw err;
     }
+  });
+
+  // ── DELETE /api/me ───────────────────────────────────────────────────────────
+  app.delete('/me', { preHandler: verifyFirebaseToken }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { uid } = request.user;
+    const db = getDb();
+    const batch = db.batch();
+
+    // Soft-delete user doc
+    const userRef = usersCol().doc(uid);
+    const userSnap = await userRef.get();
+    if (userSnap.exists) {
+      batch.update(userRef, { deleted: true, deletedAt: Timestamp.now() });
+    }
+
+    // Deactivate all trackers
+    const trackerSnap = await trackersCol().where('uid', '==', uid).get();
+    for (const doc of trackerSnap.docs) {
+      batch.update(doc.ref, { active: false });
+    }
+
+    // Delete all device tokens
+    const deviceSnap = await devicesCol().where('uid', '==', uid).get();
+    for (const doc of deviceSnap.docs) {
+      batch.delete(doc.ref);
+    }
+
+    await batch.commit();
+    return reply.status(204).send();
   });
 }

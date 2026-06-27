@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { verifyFirebaseToken } from '../auth/auth.middleware.js';
 import { verifyGooglePlayPurchase, handleRtdnNotification } from './subscription.service.js';
+import { usersCol } from '../../services/firestore.js';
 
 const verifySchema = z.object({
   purchaseToken: z.string().min(1),
@@ -9,6 +10,21 @@ const verifySchema = z.object({
 });
 
 export async function subscriptionRoutes(app: FastifyInstance): Promise<void> {
+
+  // ── GET /api/subscription/status ───────────────────────────────────────────
+  app.get('/status', { preHandler: verifyFirebaseToken }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const snap = await usersCol().doc(request.user.uid).get();
+    if (!snap.exists) {
+      return reply.send({ subscribed: false, plan: null, subscribedUntil: null, platform: null });
+    }
+    const user = snap.data()!;
+    return reply.send({
+      subscribed: user.subscribed,
+      plan: user.subscribed ? 'notice_watch_premium' : null,
+      subscribedUntil: user.subscribedUntil ?? null,
+      platform: user.subscribed ? 'android' : null,
+    });
+  });
 
   // ── POST /api/subscription/verify ──────────────────────────────────────────
   app.post('/verify', { preHandler: verifyFirebaseToken }, async (request: FastifyRequest, reply: FastifyReply) => {

@@ -12,6 +12,8 @@ export interface UserDoc {
   trackerCount: number;
   lastCoinDeductedAt: Timestamp | null;
   createdAt: Timestamp;
+  deleted?: boolean;
+  deletedAt?: Timestamp;
 }
 
 export interface TrackerDoc {

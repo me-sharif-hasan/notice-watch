@@ -1,27 +1,34 @@
 import { createHash } from 'crypto';
 
-/**
- * Returns a deterministic SHA-256 hex digest of the input string.
- */
 export function sha256(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
-/**
- * Creates a deterministic hash for a notice based on title, date, and link.
- * Used to detect duplicate notices across scrape runs.
- */
-export function noticeHash(title: string, date: string | null, link: string): string {
-  const normalized = [title.trim().toLowerCase(), date?.trim() ?? '', link.trim().toLowerCase()].join(
-    '|',
-  );
-  return sha256(normalized);
+// Strip common prefixes ("Notice:", "Circular -"), punctuation, extra whitespace
+function normalizeTitle(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/^(notice|circular|announcement|update|alert)\s*[:\-]\s*/i, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
- * Creates a hash of page content (markdown) to detect whether a page has changed.
- * Used to skip DeepSeek calls when content is identical.
+ * Identity = title + resolved link.
+ * When link is absent, fall back to title + date (less reliable but better than title alone).
+ * Date is intentionally excluded when link is present — AI date formatting is too inconsistent.
  */
+export function noticeHash(title: string, link: string, date: string | null): string {
+  const normalTitle = normalizeTitle(title);
+  const normalLink = link.trim().toLowerCase();
+  const parts = normalLink
+    ? [normalTitle, normalLink]
+    : [normalTitle, date?.trim().toLowerCase() ?? ''];
+  return sha256(parts.join('|'));
+}
+
 export function contentHash(markdown: string): string {
   return sha256(markdown);
 }

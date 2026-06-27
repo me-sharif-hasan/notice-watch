@@ -137,48 +137,49 @@ async function processJob(data: ScraperJobData): Promise<void> {
   let newNoticeCount = 0;
 
   for (const raw of rawNotices) {
-    const hash = noticeHash(raw.title, raw.date, raw.link ?? '');
+    // Resolve link before hashing so relative and absolute URLs produce the same hash
+    const resolvedLink = resolveLink(raw.link, tracker.url);
+    const hash = noticeHash(raw.title, resolvedLink, raw.date);
 
-    // Check if notice already stored (deduplication)
-    const existing = await db
-      .where('noticeHash', '==', hash)
-      .where('trackerId', '==', trackerId)
-      .limit(1)
-      .get();
+    // Use deterministic doc ID = trackerId_hash for atomic dedup (no TOCTOU race)
+    const docId = `${trackerId}_${hash}`;
+    const noticeRef = db.doc(docId);
 
-    if (!existing.empty) {
-      console.log(`[Worker] Notice already exists (hash=${hash}), skipping`);
-      continue;
-    }
-
-    // ── Store new notice ──────────────────────────────────────────────────────
-    const noticeRef = db.doc();
     const notice: NoticeDoc = {
-      id: noticeRef.id,
+      id: docId,
       trackerId,
       title: raw.title,
       summary: raw.summary,
-      link: resolveLink(raw.link, tracker.url),
+      link: resolvedLink,
       noticeHash: hash,
       readAt: null,
       publishedDate: raw.date,
       createdAt: Timestamp.now(),
     };
 
-    await noticeRef.set(notice);
-    newNoticeCount++;
+    try {
+      await noticeRef.create(notice); // throws ALREADY_EXISTS (code 6) if duplicate
+    } catch (err: unknown) {
+      const code = (err as { code?: number })?.code;
+      if (code === 6) {
+        console.log(`[Worker] Notice already exists (hash=${hash}), skipping`);
+        continue;
+      }
+      throw err;
+    }
 
-    console.log(`[Worker] Stored new notice: "${raw.title}" (${noticeRef.id})`);
+    newNoticeCount++;
+    console.log(`[Worker] Stored new notice: "${raw.title}" (${docId})`);
 
     // ── Send FCM notification ─────────────────────────────────────────────────
     try {
       await sendToUser(tracker.uid, 'New Notice Found', raw.title, {
         trackerId,
-        noticeId: noticeRef.id,
+        noticeId: docId,
       });
     } catch (err) {
       // Notification failure should not block notice storage or other notices
-      console.error(`[Worker] FCM send failed for notice ${noticeRef.id}:`, err);
+      console.error(`[Worker] FCM send failed for notice ${docId}:`, err);
     }
   }
 

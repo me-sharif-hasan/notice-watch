@@ -16,14 +16,6 @@
         { "fieldPath": "trackerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "notices",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "noticeHash", "order": "ASCENDING" },
-        { "fieldPath": "trackerId",  "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []

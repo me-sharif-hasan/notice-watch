@@ -32,3 +32,8 @@ export function noticeHash(title: string, link: string, date: string | null): st
 export function contentHash(markdown: string): string {
   return sha256(markdown);
 }
+
+// Deterministic, stable sourceId from a URL
+export function urlHash(url: string): string {
+  return sha256(url.trim().toLowerCase());
+}

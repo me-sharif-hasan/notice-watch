@@ -16,6 +16,14 @@
         { "fieldPath": "trackerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "trackers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sourceId", "order": "ASCENDING" },
+        { "fieldPath": "active",   "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

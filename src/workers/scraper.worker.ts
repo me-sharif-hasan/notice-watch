@@ -1,16 +1,14 @@
 import { Worker, Queue, QueueEvents } from 'bullmq';
 import { Timestamp } from 'firebase-admin/firestore';
-import { trackersCol, noticesCol } from '../services/firestore.js';
+import { trackersCol, noticesCol, sourcesCol, getDb } from '../services/firestore.js';
 import { renderPage } from '../services/playwright.js';
 import { extractNotices } from '../services/deepseek.js';
 import { sendToUser } from '../services/fcm.js';
 import { htmlToMarkdown, truncate } from '../utils/markdown.js';
 import { contentHash, noticeHash } from '../utils/hash.js';
-import type { ScraperJobData, TrackerDoc, NoticeDoc } from '../types/index.js';
+import type { ScraperJobData, TrackerDoc, NoticeDoc, SourceDoc } from '../types/index.js';
 
-// ─── Redis Connection Options ─────────────────────────────────────────────────
-// BullMQ v5 bundles its own ioredis. Pass the URL string directly to avoid
-// type conflicts between the two ioredis versions.
+// ─── Redis Connection ─────────────────────────────────────────────────────────
 
 const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
 
@@ -33,7 +31,7 @@ export const scraperQueue = new Queue<ScraperJobData>('scraper-queue', {
   },
 });
 
-// ─── Queue Events (for logging) ───────────────────────────────────────────────
+// ─── Queue Events ─────────────────────────────────────────────────────────────
 
 export const scraperQueueEvents = new QueueEvents('scraper-queue', {
   connection: makeConnection(),
@@ -47,7 +45,7 @@ scraperQueueEvents.on('failed', ({ jobId, failedReason }) => {
   console.error(`[Queue] Job ${jobId} failed: ${failedReason}`);
 });
 
-// ─── URL Resolution ───────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function resolveLink(link: string | null, base: string): string {
   if (!link) return '';
@@ -58,140 +56,161 @@ function resolveLink(link: string | null, base: string): string {
   }
 }
 
-// ─── Max Markdown Size ────────────────────────────────────────────────────────
-
 const MAX_MARKDOWN_CHARS = parseInt(process.env.MAX_MARKDOWN_CHARS ?? '50000', 10);
 
 // ─── Worker Process ───────────────────────────────────────────────────────────
 
 /**
- * Processes a single scraper job:
+ * Processes a single scraper job per source (unique URL):
  *
- * 1. Fetch tracker from Firestore
- * 2. Verify tracker is still active
- * 3. Render page with Playwright
- * 4. Convert HTML → Markdown → truncate
- * 5. Hash the Markdown — skip DeepSeek if content unchanged
- * 6. Call DeepSeek to extract notices
- * 7. For each notice: compute hash, skip if already stored, else store + notify
- * 8. Update tracker metadata
+ * 1. Fetch source doc
+ * 2. Find all active trackers pointing at this source
+ * 3. Render page once with Playwright
+ * 4. Hash content — skip DeepSeek if unchanged, just update lastCheckedAt on all trackers
+ * 5. Group trackers by prompt — one DeepSeek call per unique prompt
+ * 6. For each tracker: store new notices (atomic create), send FCM
+ * 7. Update source metadata
  */
 async function processJob(data: ScraperJobData): Promise<void> {
-  const { trackerId } = data;
+  const { sourceId } = data;
 
-  console.log(`[Worker] Processing tracker ${trackerId}`);
+  console.log(`[Worker] Processing source ${sourceId}`);
 
-  // ── 1. Fetch tracker ────────────────────────────────────────────────────────
-  const trackerRef = trackersCol().doc(trackerId);
-  const trackerSnap = await trackerRef.get();
+  // ── 1. Fetch source ─────────────────────────────────────────────────────────
+  const sourceRef = sourcesCol().doc(sourceId);
+  const sourceSnap = await sourceRef.get();
 
-  if (!trackerSnap.exists) {
-    console.warn(`[Worker] Tracker ${trackerId} not found, skipping`);
+  if (!sourceSnap.exists) {
+    console.warn(`[Worker] Source ${sourceId} not found, skipping`);
     return;
   }
 
-  const tracker = trackerSnap.data() as TrackerDoc;
+  const source = sourceSnap.data() as SourceDoc;
 
-  // ── 2. Skip if deactivated ─────────────────────────────────────────────────
-  if (!tracker.active) {
-    console.log(`[Worker] Tracker ${trackerId} is inactive, skipping`);
+  // ── 2. Find active trackers for this source ─────────────────────────────────
+  const trackerSnap = await trackersCol()
+    .where('sourceId', '==', sourceId)
+    .where('active', '==', true)
+    .get();
+
+  if (trackerSnap.empty) {
+    console.log(`[Worker] No active trackers for source ${sourceId}, skipping`);
     return;
   }
 
-  // ── 3. Render page ─────────────────────────────────────────────────────────
+  const trackers = trackerSnap.docs.map((d) => d.data() as TrackerDoc);
+  console.log(`[Worker] ${trackers.length} active tracker(s) for source ${sourceId}`);
+
+  // ── 3. Render page once ─────────────────────────────────────────────────────
   let html: string;
   try {
-    html = await renderPage(tracker.url);
+    html = await renderPage(source.url);
   } catch (err) {
-    console.error(`[Worker] Playwright failed for ${tracker.url}:`, err);
-    throw err; // Let BullMQ retry
+    console.error(`[Worker] Playwright failed for ${source.url}:`, err);
+    throw err;
   }
 
-  // ── 4. Convert HTML → Markdown → truncate ──────────────────────────────────
   const markdown = truncate(htmlToMarkdown(html), MAX_MARKDOWN_CHARS);
 
-  // ── 5. Content hash check ───────────────────────────────────────────────────
+  // ── 4. Content hash check ───────────────────────────────────────────────────
   const newContentHash = contentHash(markdown);
 
-  if (tracker.lastContentHash === newContentHash) {
-    console.log(`[Worker] Content unchanged for tracker ${trackerId}, updating lastCheckedAt`);
-    await trackerRef.update({ lastCheckedAt: Timestamp.now() });
+  if (source.lastContentHash === newContentHash) {
+    console.log(`[Worker] Content unchanged for source ${sourceId}, updating lastCheckedAt`);
+    const batch = getDb().batch();
+    for (const tracker of trackers) {
+      batch.update(trackersCol().doc(tracker.id), { lastCheckedAt: Timestamp.now() });
+    }
+    await batch.commit();
     return;
   }
 
-  console.log(`[Worker] Content changed for tracker ${trackerId}, calling DeepSeek`);
+  console.log(`[Worker] Content changed for source ${sourceId}, calling DeepSeek`);
 
-  // ── 6. Extract notices via DeepSeek ─────────────────────────────────────────
-  let rawNotices;
-  try {
-    rawNotices = await extractNotices(markdown, tracker.prompt);
-  } catch (err) {
-    console.error(`[Worker] DeepSeek extraction failed for tracker ${trackerId}:`, err);
-    throw err; // Let BullMQ retry
+  // ── 5. Group trackers by prompt (one DeepSeek call per unique prompt) ────────
+  const byPrompt = new Map<string, TrackerDoc[]>();
+  for (const tracker of trackers) {
+    const group = byPrompt.get(tracker.prompt) ?? [];
+    group.push(tracker);
+    byPrompt.set(tracker.prompt, group);
   }
 
-  console.log(`[Worker] DeepSeek returned ${rawNotices.length} notices for tracker ${trackerId}`);
-
-  // ── 7. Process each notice ─────────────────────────────────────────────────
+  // ── 6. Extract + fan out per prompt group ───────────────────────────────────
   const db = noticesCol();
-  let newNoticeCount = 0;
 
-  for (const raw of rawNotices) {
-    // Resolve link before hashing so relative and absolute URLs produce the same hash
-    const resolvedLink = resolveLink(raw.link, tracker.url);
-    const hash = noticeHash(raw.title, resolvedLink, raw.date);
-
-    // Use deterministic doc ID = trackerId_hash for atomic dedup (no TOCTOU race)
-    const docId = `${trackerId}_${hash}`;
-    const noticeRef = db.doc(docId);
-
-    const notice: NoticeDoc = {
-      id: docId,
-      trackerId,
-      title: raw.title,
-      summary: raw.summary,
-      link: resolvedLink,
-      noticeHash: hash,
-      readAt: null,
-      publishedDate: raw.date,
-      createdAt: Timestamp.now(),
-    };
-
+  for (const [prompt, promptTrackers] of byPrompt) {
+    let rawNotices;
     try {
-      await noticeRef.create(notice); // throws ALREADY_EXISTS (code 6) if duplicate
-    } catch (err: unknown) {
-      const code = (err as { code?: number })?.code;
-      if (code === 6) {
-        console.log(`[Worker] Notice already exists (hash=${hash}), skipping`);
-        continue;
-      }
+      rawNotices = await extractNotices(markdown, prompt);
+    } catch (err) {
+      console.error(`[Worker] DeepSeek failed for source ${sourceId}:`, err);
       throw err;
     }
 
-    newNoticeCount++;
-    console.log(`[Worker] Stored new notice: "${raw.title}" (${docId})`);
+    console.log(
+      `[Worker] DeepSeek returned ${rawNotices.length} notices for prompt group (${promptTrackers.length} tracker(s))`,
+    );
 
-    // ── Send FCM notification ─────────────────────────────────────────────────
-    try {
-      await sendToUser(tracker.uid, 'New Notice Found', raw.title, {
-        trackerId,
-        noticeId: docId,
-      });
-    } catch (err) {
-      // Notification failure should not block notice storage or other notices
-      console.error(`[Worker] FCM send failed for notice ${docId}:`, err);
+    for (const tracker of promptTrackers) {
+      let newNoticeCount = 0;
+
+      for (const raw of rawNotices) {
+        const resolvedLink = resolveLink(raw.link, source.url);
+        const hash = noticeHash(raw.title, resolvedLink, raw.date);
+        const docId = `${tracker.id}_${hash}`;
+        const noticeRef = db.doc(docId);
+
+        const notice: NoticeDoc = {
+          id: docId,
+          trackerId: tracker.id,
+          title: raw.title,
+          summary: raw.summary,
+          link: resolvedLink,
+          noticeHash: hash,
+          readAt: null,
+          publishedDate: raw.date,
+          createdAt: Timestamp.now(),
+        };
+
+        try {
+          await noticeRef.create(notice); // atomic — throws code 6 if already exists
+        } catch (err: unknown) {
+          const code = (err as { code?: number })?.code;
+          if (code === 6) {
+            console.log(`[Worker] Notice already exists (hash=${hash}), skipping`);
+            continue;
+          }
+          throw err;
+        }
+
+        newNoticeCount++;
+        console.log(`[Worker] Stored notice: "${raw.title}" → tracker ${tracker.id}`);
+
+        try {
+          await sendToUser(tracker.uid, 'New Notice Found', raw.title, {
+            trackerId: tracker.id,
+            noticeId: docId,
+          });
+        } catch (err) {
+          console.error(`[Worker] FCM failed for notice ${docId}:`, err);
+        }
+      }
+
+      await trackersCol().doc(tracker.id).update({ lastCheckedAt: Timestamp.now() });
+
+      console.log(
+        `[Worker] Tracker ${tracker.id} done. New: ${newNoticeCount}/${rawNotices.length}`,
+      );
     }
   }
 
-  // ── 8. Update tracker metadata ─────────────────────────────────────────────
-  await trackerRef.update({
+  // ── 7. Update source metadata ───────────────────────────────────────────────
+  await sourceRef.update({
     lastContentHash: newContentHash,
-    lastCheckedAt: Timestamp.now(),
+    lastRenderedAt: Timestamp.now(),
   });
 
-  console.log(
-    `[Worker] Tracker ${trackerId} done. New notices: ${newNoticeCount}/${rawNotices.length}`,
-  );
+  console.log(`[Worker] Source ${sourceId} done`);
 }
 
 // ─── Worker Instance ──────────────────────────────────────────────────────────

@@ -1,8 +1,9 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { trackersCol } from '../../services/firestore.js';
+import { trackersCol, sourcesCol } from '../../services/firestore.js';
 import { validateUrl } from '../../utils/url-validator.js';
+import { urlHash } from '../../utils/hash.js';
 import { scraperQueue } from '../../workers/scraper.worker.js';
-import type { TrackerDoc } from '../../types/index.js';
+import type { TrackerDoc, SourceDoc } from '../../types/index.js';
 
 // ─── Create Tracker ───────────────────────────────────────────────────────────
 
@@ -17,16 +18,28 @@ export async function createTracker(
   // SSRF guard — throws if URL targets private network
   validateUrl(url);
 
-  const ref = trackersCol().doc();
   const now = Timestamp.now();
+  const sourceId = urlHash(url);
 
+  // Upsert source — merge:true creates if absent, leaves existing data intact
+  const sourceRef = sourcesCol().doc(sourceId);
+  const source: SourceDoc = {
+    id: sourceId,
+    url,
+    lastContentHash: null,
+    lastRenderedAt: null,
+    createdAt: now,
+  };
+  await sourceRef.set(source, { merge: true });
+
+  const ref = trackersCol().doc();
   const tracker: TrackerDoc = {
     id: ref.id,
     uid,
     url,
     prompt,
     active: true,
-    lastContentHash: null,
+    sourceId,
     lastCheckedAt: null,
     createdAt: now,
   };
@@ -36,9 +49,9 @@ export async function createTracker(
   // Enqueue an immediate scrape job so the user gets notices without waiting for cron
   await scraperQueue.add(
     'scrape' as Parameters<typeof scraperQueue.add>[0],
-    { trackerId: ref.id },
+    { sourceId },
     {
-      jobId: `immediate-${ref.id}-${Date.now()}`,
+      jobId: `immediate-${sourceId}-${Date.now()}`,
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
     },

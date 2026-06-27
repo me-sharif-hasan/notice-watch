@@ -11,18 +11,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install rsync and sshpass
-        run: sudo apt-get install -y rsync sshpass
+      - name: Install rsync
+        run: sudo apt-get install -y rsync
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       - name: Sync source to server
         run: |
-          sshpass -p "${{ secrets.SSH_PASS }}" rsync -avz --delete \
+          rsync -avz --delete \
             --exclude='.env' \
             --exclude='service-account.json' \
             --exclude='node_modules/' \
             --exclude='dist/' \
             --exclude='.git/' \
-            -e "ssh -o StrictHostKeyChecking=no" \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             . \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/notice-watch/
 
@@ -34,7 +41,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASS }}
+          key: ${{ secrets.SSH_KEY }}
           envs: DEEPSEEK_API_KEY,SERVICE_ACCOUNT
           script: |
             set -e
@@ -45,7 +52,7 @@ jobs:
             # Write service account JSON
             printf '%s' "$SERVICE_ACCOUNT" > service-account.json
 
-            # Write .env (only secrets; keep other vars already on server intact)
+            # Write .env
             cat > .env << EOF
             NODE_ENV=production
             PORT=3000
@@ -64,7 +71,7 @@ jobs:
             # Install pm2 globally if missing
             command -v pm2 > /dev/null 2>&1 || npm install -g pm2
 
-            # Install node deps (postinstall runs: playwright install chromium)
+            # Install node deps
             npm ci
 
             # Build TypeScript
@@ -72,10 +79,13 @@ jobs:
 
             # Start or restart via pm2
             if pm2 describe notice-watch > /dev/null 2>&1; then
-              pm2 restart notice-watch
+              pm2 reload notice-watch
             else
               pm2 start dist/app.js --name notice-watch
             fi
 
+            # Persist process list across reboots
             pm2 save
-            pm2 startup | tail -1 | bash || true
+
+            # Setup startup script (needs sudo once on server — skip error if already done)
+            env PATH=$PATH:$(dirname $(which node)) pm2 startup systemd -u $USER --hp $HOME 2>/dev/null | tail -1 | sudo bash || true

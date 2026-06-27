@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { usersCol } from '../../services/firestore.js';
+import { cacheDel, CacheKey } from '../../services/cache.js';
 
 const PACKAGE_NAME = process.env.GOOGLE_PLAY_PACKAGE_NAME ?? '';
 
@@ -82,6 +83,7 @@ export async function verifyGooglePlayPurchase(
     subscribed: true,
     subscribedUntil: Timestamp.fromMillis(expiryMs),
   });
+  void cacheDel(CacheKey.user(uid));
 
   console.log(`[Subscription] Verified for uid=${uid}, expires=${new Date(expiryMs).toISOString()}`);
 }

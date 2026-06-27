@@ -1,5 +1,6 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { trackersCol, sourcesCol, usersCol, settingsDoc } from '../../services/firestore.js';
+import { cacheGet, cacheSet, cacheDel, CacheKey, TTL } from '../../services/cache.js';
 import { validateUrl } from '../../utils/url-validator.js';
 import { urlHash } from '../../utils/hash.js';
 import { scraperQueue } from '../../workers/scraper.worker.js';
@@ -95,6 +96,7 @@ export async function createTracker(
     },
   );
 
+  void cacheDel(CacheKey.trackers(uid), CacheKey.user(uid));
   console.log(`[TrackerService] Created tracker ${ref.id} for uid=${uid}`);
   return tracker;
 }
@@ -102,13 +104,19 @@ export async function createTracker(
 // ─── List Trackers ────────────────────────────────────────────────────────────
 
 export async function listTrackers(uid: string): Promise<TrackerDoc[]> {
+  const cacheKey = CacheKey.trackers(uid);
+  const cached = await cacheGet<TrackerDoc[]>(cacheKey);
+  if (cached) return cached;
+
   const snap = await trackersCol()
     .where('uid', '==', uid)
     .where('active', '==', true)
     .orderBy('createdAt', 'desc')
     .get();
 
-  return snap.docs.map((doc) => { const d = doc.data(); return { ...d, global: d.global ?? false }; });
+  const trackers = snap.docs.map((doc) => { const d = doc.data(); return { ...d, global: d.global ?? false }; });
+  void cacheSet(cacheKey, trackers, TTL.trackers);
+  return trackers;
 }
 
 // ─── Get Tracker ──────────────────────────────────────────────────────────────
@@ -139,6 +147,7 @@ export async function deleteTracker(uid: string, trackerId: string): Promise<boo
     await usersCol().doc(uid).update({ trackerCount: FieldValue.increment(-1) });
   }
 
+  void cacheDel(CacheKey.trackers(uid), CacheKey.user(uid));
   console.log(`[TrackerService] Deleted tracker ${trackerId} for uid=${uid}`);
   return true;
 }
@@ -168,6 +177,7 @@ export async function toggleTracker(uid: string, trackerId: string): Promise<boo
   }
 
   await ref.update({ active: newActive });
+  void cacheDel(CacheKey.trackers(uid), CacheKey.user(uid));
   return newActive;
 }
 
@@ -192,6 +202,7 @@ export async function updateTracker(
   if (Object.keys(patch).length === 0) return data;
 
   await ref.update(patch);
+  void cacheDel(CacheKey.trackers(uid));
   return { ...data, ...patch };
 }
 

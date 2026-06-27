@@ -1,5 +1,6 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { usersCol, trackersCol, getDb } from '../../services/firestore.js';
+import { cacheGet, cacheSet, cacheDel, CacheKey, TTL } from '../../services/cache.js';
 import type { UserDoc } from '../../types/index.js';
 
 const FREE_TRACKER_LIMIT = 5;
@@ -54,6 +55,22 @@ export async function createOrGetUser(
 // ─── Get Me ───────────────────────────────────────────────────────────────────
 
 export async function getMe(uid: string): Promise<{ user: UserDoc; trackerLimit: number }> {
+  const cacheKey = CacheKey.user(uid);
+
+  // Try cache first — skip if coin deduction might be needed (check timestamp offline)
+  const cached = await cacheGet<UserDoc>(cacheKey);
+  if (cached) {
+    const lastDeducted = cached.lastCoinDeductedAt
+      ? new Date(cached.lastCoinDeductedAt as unknown as string).getTime()
+      : new Date(cached.createdAt as unknown as string).getTime();
+    const daysSince = Math.floor((Date.now() - lastDeducted) / 86400000);
+    // Serve from cache only if no coin deduction is due
+    if (daysSince < 1) {
+      const trackerLimit = cached.subscribed ? SUBSCRIBED_TRACKER_LIMIT : FREE_TRACKER_LIMIT;
+      return { user: cached, trackerLimit };
+    }
+  }
+
   const userRef = usersCol().doc(uid);
   const snap = await userRef.get();
 
@@ -92,6 +109,7 @@ export async function getMe(uid: string): Promise<{ user: UserDoc; trackerLimit:
     user = { ...user, lastCoinDeductedAt: Timestamp.now() };
   }
 
+  void cacheSet(cacheKey, user, TTL.user);
   return { user, trackerLimit };
 }
 

@@ -33,7 +33,19 @@ export async function createOrGetUser(
   } catch (err: unknown) {
     if ((err as { code?: number })?.code === 6) {
       const snap = await userRef.get();
-      return snap.data() as UserDoc;
+      const existing = snap.data() as UserDoc;
+
+      // Update stale anonymous/email if user has since linked a real account
+      const updates: Partial<UserDoc> = {};
+      if (existing.anonymous !== anonymous) updates.anonymous = anonymous;
+      if (existing.email !== email) updates.email = email;
+
+      if (Object.keys(updates).length > 0) {
+        await userRef.update(updates);
+        return { ...existing, ...updates };
+      }
+
+      return existing;
     }
     throw err;
   }

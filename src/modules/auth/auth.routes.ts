@@ -18,8 +18,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const { user, trackerLimit } = await getMe(request.user.uid);
       return reply.send({
         uid: user.uid,
-        email: user.email ?? null,
-        anonymous: user.anonymous,
+        email: request.user.email,
+        anonymous: request.user.anonymous,
         subscribed: user.subscribed,
         subscribedUntil: user.subscribedUntil,
         coins: user.coins,
@@ -36,8 +36,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         const { user, trackerLimit } = await getMe(uid);
         return reply.send({
           uid: user.uid,
-          email: user.email ?? null,
-          anonymous: user.anonymous,
+          email: request.user.email,
+          anonymous: request.user.anonymous,
           subscribed: user.subscribed,
           subscribedUntil: user.subscribedUntil,
           coins: user.coins,

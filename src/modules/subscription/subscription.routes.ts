@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { verifyFirebaseToken } from '../auth/auth.middleware.js';
 import { verifyGooglePlayPurchase, handleRtdnNotification } from './subscription.service.js';
 import { usersCol } from '../../services/firestore.js';
+import { cacheGet, CacheKey } from '../../services/cache.js';
+import type { UserDoc } from '../../types/index.js';
 
 const verifySchema = z.object({
   purchaseToken: z.string().min(1),
@@ -13,11 +15,17 @@ export async function subscriptionRoutes(app: FastifyInstance): Promise<void> {
 
   // ── GET /api/subscription/status ───────────────────────────────────────────
   app.get('/status', { preHandler: verifyFirebaseToken }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const snap = await usersCol().doc(request.user.uid).get();
-    if (!snap.exists) {
-      return reply.send({ subscribed: false, plan: null, subscribedUntil: null, platform: null });
+    const uid = request.user.uid;
+    let user: UserDoc | null = await cacheGet<UserDoc>(CacheKey.user(uid));
+
+    if (!user) {
+      const snap = await usersCol().doc(uid).get();
+      if (!snap.exists) {
+        return reply.send({ subscribed: false, plan: null, subscribedUntil: null, platform: null });
+      }
+      user = snap.data() as UserDoc;
     }
-    const user = snap.data()!;
+
     return reply.send({
       subscribed: user.subscribed,
       plan: user.subscribed ? 'notice_watch_premium' : null,

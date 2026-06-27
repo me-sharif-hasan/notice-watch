@@ -14,9 +14,18 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   }
 }
 
+function serialize(value: unknown): string {
+  return JSON.stringify(value, (_k, v) => {
+    if (v !== null && typeof v === 'object' && typeof v._seconds === 'number' && typeof v._nanoseconds === 'number') {
+      return new Date(v._seconds * 1000 + v._nanoseconds / 1e6).toISOString();
+    }
+    return v;
+  });
+}
+
 export async function cacheSet(key: string, value: unknown, ttl: number): Promise<void> {
   try {
-    await getRedis().set(key, JSON.stringify(value), 'EX', ttl);
+    await getRedis().set(key, serialize(value), 'EX', ttl);
   } catch { /* non-fatal */ }
 }
 

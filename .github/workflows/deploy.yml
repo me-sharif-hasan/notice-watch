@@ -83,7 +83,7 @@ jobs:
             npm install --ignore-scripts
 
             # Deploy Firestore indexes (uses firebase login stored on VPS)
-            firebase deploy --only firestore:indexes --project notice-watch --non-interactive || true
+            firebase deploy --only firestore:indexes --project notice-watch --non-interactive
 
             # Install chromium — skip OS validation (ubuntu26.04 not yet in playwright's allowlist)
             PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 ./node_modules/.bin/playwright install chromium

@@ -71,8 +71,11 @@ jobs:
             # Install pm2 globally if missing
             command -v pm2 > /dev/null 2>&1 || npm install -g pm2
 
-            # Install node deps
-            npm ci
+            # Install node deps (skip postinstall — playwright install runs separately)
+            npm ci --ignore-scripts
+
+            # Install chromium — skip OS validation (ubuntu26.04 not yet in playwright's allowlist)
+            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 npx playwright install chromium
 
             # Build TypeScript
             npm run build

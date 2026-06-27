@@ -32,6 +32,19 @@ const app = Fastify({
   },
 });
 
+// Allow empty JSON bodies (e.g. PATCH /read with no payload)
+app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
+  if (!body || (body as string).trim() === '') {
+    done(null, {});
+    return;
+  }
+  try {
+    done(null, JSON.parse(body as string));
+  } catch (e) {
+    done(e as Error, undefined);
+  }
+});
+
 // ─── Plugins ──────────────────────────────────────────────────────────────────
 
 await app.register(helmet, {

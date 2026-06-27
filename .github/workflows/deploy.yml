@@ -38,11 +38,13 @@ jobs:
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY }}
+          PUBSUB_VERIFICATION_TOKEN: ${{ secrets.PUBSUB_VERIFICATION_TOKEN }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: DEEPSEEK_API_KEY,SERVICE_ACCOUNT
+          envs: DEEPSEEK_API_KEY,SERVICE_ACCOUNT,GOOGLE_PLAY_SERVICE_ACCOUNT_KEY,PUBSUB_VERIFICATION_TOKEN
           script: |
             set -e
             export NVM_DIR="$HOME/.nvm"
@@ -66,6 +68,9 @@ jobs:
             WORKER_CONCURRENCY=2
             RATE_LIMIT_MAX=100
             RATE_LIMIT_WINDOW_MS=60000
+            GOOGLE_PLAY_PACKAGE_NAME=com.iishanto.noticewatch
+            GOOGLE_PLAY_SERVICE_ACCOUNT_KEY=${GOOGLE_PLAY_SERVICE_ACCOUNT_KEY}
+            PUBSUB_VERIFICATION_TOKEN=${PUBSUB_VERIFICATION_TOKEN}
             EOF
 
             # Install pm2 globally if missing

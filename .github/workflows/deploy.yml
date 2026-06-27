@@ -21,17 +21,6 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy Firestore indexes
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_CI_TOKEN }}
-        run: |
-          npm install -g firebase-tools@13
-          firebase deploy \
-            --only firestore:indexes \
-            --project notice-watch \
-            --token "$FIREBASE_TOKEN" \
-            --non-interactive
-
       - name: Sync source to server
         run: |
           rsync -avz --delete \
@@ -87,8 +76,14 @@ jobs:
             # Install pm2 globally if missing
             command -v pm2 > /dev/null 2>&1 || npm install -g pm2
 
+            # Install firebase-tools globally if missing
+            command -v firebase > /dev/null 2>&1 || npm install -g firebase-tools@13
+
             # Install node deps (skip postinstall — playwright install runs separately)
             npm install --ignore-scripts
+
+            # Deploy Firestore indexes (uses firebase login stored on VPS)
+            firebase deploy --only firestore:indexes --project notice-watch --non-interactive || true
 
             # Install chromium — skip OS validation (ubuntu26.04 not yet in playwright's allowlist)
             PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 ./node_modules/.bin/playwright install chromium

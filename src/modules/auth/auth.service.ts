@@ -1,6 +1,6 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { usersCol, trackersCol, getDb } from '../../services/firestore.js';
-import { cacheGet, cacheSet, cacheDel, CacheKey, TTL } from '../../services/cache.js';
+import { cacheGet, cacheSet, CacheKey, TTL } from '../../services/cache.js';
 import type { UserDoc } from '../../types/index.js';
 
 const FREE_TRACKER_LIMIT = 5;

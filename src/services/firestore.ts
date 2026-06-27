@@ -1,8 +1,8 @@
 import admin from 'firebase-admin';
-import { getFirestore, Firestore, CollectionReference } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, CollectionReference, DocumentReference } from 'firebase-admin/firestore';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import type { UserDoc, TrackerDoc, NoticeDoc, DeviceDoc, SourceDoc } from '../types/index.js';
+import type { UserDoc, TrackerDoc, NoticeDoc, DeviceDoc, SourceDoc, AdSsvEventDoc, GlobalSettingsDoc, IntegrationTokenDoc } from '../types/index.js';
 
 // ─── Initialize Firebase Admin ────────────────────────────────────────────────
 
@@ -49,10 +49,18 @@ export function devicesCol(): CollectionReference<DeviceDoc> {
   return getDb().collection('devices') as CollectionReference<DeviceDoc>;
 }
 
-/**
- * V2 stub: sources collection for URL-level deduplication.
- * Not actively used in V1 — reserved for migration.
- */
 export function sourcesCol(): CollectionReference<SourceDoc> {
   return getDb().collection('sources') as CollectionReference<SourceDoc>;
+}
+
+export function adSsvEventsCol(): CollectionReference<AdSsvEventDoc> {
+  return getDb().collection('adSsvEvents') as CollectionReference<AdSsvEventDoc>;
+}
+
+export function settingsDoc(): DocumentReference<GlobalSettingsDoc> {
+  return getDb().collection('settings').doc('global') as DocumentReference<GlobalSettingsDoc>;
+}
+
+export function integrationTokensCol(): CollectionReference<IntegrationTokenDoc> {
+  return getDb().collection('integrationTokens') as CollectionReference<IntegrationTokenDoc>;
 }

@@ -10,6 +10,22 @@
       ]
     },
     {
+      "collectionGroup": "trackers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sourceId", "order": "ASCENDING" },
+        { "fieldPath": "active",   "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "trackers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid",       "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "notices",
       "queryScope": "COLLECTION",
       "fields": [
@@ -18,11 +34,27 @@
       ]
     },
     {
-      "collectionGroup": "trackers",
+      "collectionGroup": "notices",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "sourceId", "order": "ASCENDING" },
-        { "fieldPath": "active",   "order": "ASCENDING" }
+        { "fieldPath": "trackerId", "order": "ASCENDING" },
+        { "fieldPath": "readAt",    "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "global",    "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "subscribed",    "order": "ASCENDING" },
+        { "fieldPath": "trackerCount",  "order": "ASCENDING" }
       ]
     }
   ],

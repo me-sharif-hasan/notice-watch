@@ -12,6 +12,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 import { trackerRoutes } from './modules/trackers/tracker.routes.js';
 import { noticeRoutes } from './modules/notices/notice.routes.js';
 import { deviceRoutes } from './modules/devices/device.routes.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { adRoutes } from './modules/ad/ad.routes.js';
+import { subscriptionRoutes } from './modules/subscription/subscription.routes.js';
+import { adminRoutes } from './modules/admin/admin.routes.js';
 import { startScheduler } from './jobs/scheduler.js';
 import { scraperWorker } from './workers/scraper.worker.js';
 import { closeBrowser } from './services/playwright.js';
@@ -37,7 +41,7 @@ await app.register(helmet, {
 
 await app.register(cors, {
   origin: process.env.CORS_ORIGIN ?? '*',
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
 });
 
 await app.register(rateLimit, {
@@ -67,9 +71,13 @@ app.get('/', async (_req, reply) => reply.redirect('/ui/index.html'));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
+await app.register(authRoutes, { prefix: '/api' });
 await app.register(trackerRoutes, { prefix: '/api/trackers' });
 await app.register(noticeRoutes, { prefix: '/api/notices' });
 await app.register(deviceRoutes, { prefix: '/api/devices' });
+await app.register(adRoutes, { prefix: '/api/ad' });
+await app.register(subscriptionRoutes, { prefix: '/api/subscription' });
+await app.register(adminRoutes, { prefix: '/api/admin' });
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 

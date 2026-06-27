@@ -43,6 +43,13 @@ export async function registerDevice(
   return device;
 }
 
+// ─── List Devices ─────────────────────────────────────────────────────────────
+
+export async function listDevices(uid: string): Promise<DeviceDoc[]> {
+  const snap = await devicesCol().where('uid', '==', uid).get();
+  return snap.docs.map((doc) => doc.data());
+}
+
 // ─── Unregister Device ────────────────────────────────────────────────────────
 
 /**

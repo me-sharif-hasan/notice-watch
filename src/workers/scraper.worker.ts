@@ -167,6 +167,7 @@ async function processJob(data: ScraperJobData): Promise<void> {
           summary: raw.summary,
           link: resolvedLink,
           noticeHash: hash,
+          global: tracker.global ?? false,
           readAt: null,
           publishedDate: raw.date,
           createdAt: Timestamp.now(),

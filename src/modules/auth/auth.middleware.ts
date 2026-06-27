@@ -1,23 +1,14 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { admin } from '../../services/firestore.js';
+import { createOrGetUser } from './auth.service.js';
 import type { AuthenticatedUser } from '../../types/index.js';
 
-// Augment Fastify's request type to carry the decoded user
 declare module 'fastify' {
   interface FastifyRequest {
     user: AuthenticatedUser;
   }
 }
 
-/**
- * Fastify preHandler hook that verifies a Firebase ID token.
- *
- * Expects the request to include:
- *   Authorization: Bearer <firebase-id-token>
- *
- * On success, attaches `request.user = { uid, email }`.
- * On failure, replies with 401.
- */
 export async function verifyFirebaseToken(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -32,15 +23,20 @@ export async function verifyFirebaseToken(
     });
   }
 
-  const token = authHeader.slice(7); // Remove "Bearer " prefix
+  const token = authHeader.slice(7);
 
   try {
     const decoded = await admin.auth().verifyIdToken(token);
+    const anonymous = decoded.firebase?.sign_in_provider === 'anonymous';
 
     request.user = {
       uid: decoded.uid,
-      email: decoded.email ?? '',
+      email: decoded.email ?? null,
+      anonymous,
     };
+
+    // Auto-create UserDoc on first authenticated request
+    await createOrGetUser(decoded.uid, decoded.email ?? null, anonymous);
   } catch (err) {
     console.warn('[Auth] Token verification failed:', (err as Error).message);
     return reply.status(401).send({

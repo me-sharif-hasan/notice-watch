@@ -41,19 +41,19 @@ final credential = GoogleAuthProvider.credential(
 await FirebaseAuth.instance.currentUser!.linkWithCredential(credential);
 ```
 
-If user already has a Google account (collision error `credential-already-in-use`):
-- The anonymous account cannot be linked
+If collision error `credential-already-in-use`:
 - Prompt user: "This Google account already has data. Switch to it? Your anonymous trackers will be lost."
 - If yes: `await FirebaseAuth.instance.signInWithCredential(credential)`
 
-### Subscription / session restoration
+### Session restoration
 
-On app open, after Firebase restores auth:
-1. Call `GET /api/me` with ID token
-2. Response gives full user state including subscription, tracker limits, ad slots
-3. Firebase handles UID restoration across reinstalls (iOS: iCloud Keychain, Android: Google account)
+Firebase SDK restores auth automatically across restarts and reinstalls (iOS: iCloud Keychain, Android: Google account backup). On app open:
 
-Anonymous users who reinstall and have no Google account linked will lose their session. Warn them: *"Log in to back up your trackers."*
+1. Firebase restores UID automatically
+2. Call `GET /api/me` → full user state including subscription, limits, coins
+3. Show UI based on response
+
+Anonymous users who reinstall without Google link will lose their session. Warn them: *"Log in to back up your trackers."*
 
 ---
 
@@ -65,31 +65,31 @@ App opens
 FirebaseAuth.instance.currentUser == null?
   → signInAnonymously()
   ↓
-POST /api/auth/register          ← create UserDoc if not exists
+POST /api/auth/register          ← create UserDoc if not exists (idempotent)
   ↓
-GET /api/me                      ← load state, limits, subscription
+GET /api/me                      ← load state, limits, coins
   ↓
 Show home screen
 ```
 
 ### POST /api/auth/register
 
-**No auth required** (but send token if available — backend uses it to set UID)
-
 ```
 POST /api/auth/register
 Authorization: Bearer <token>
-Content-Type: application/json
-
-{}
 ```
 
-Response `201` or `200` (idempotent):
+Response `201` (or `200` if already exists):
 ```json
 {
-  "uid": "firebase-uid",
-  "anonymous": true,
-  "createdAt": "2026-06-27T..."
+  "user": {
+    "uid": "firebase-uid",
+    "anonymous": true,
+    "subscribed": false,
+    "coins": 0,
+    "trackerCount": 0,
+    "createdAt": "..."
+  }
 }
 ```
 
@@ -109,23 +109,19 @@ Response:
   "anonymous": true,
   "subscribed": false,
   "subscribedUntil": null,
-  "trackerCount": 2,
-  "trackerLimit": 5,
-  "activeAdSlots": 1,
-  "adSlotsDetail": [
-    { "expiresAt": "2026-07-12T..." }
-  ]
+  "coins": 12,
+  "trackerCount": 3,
+  "trackerLimit": 5
 }
 ```
 
-`trackerLimit` already computed by backend:
-- Free: 5 + activeAdSlots (capped at 10)
-- Subscribed: 100
+`trackerLimit` is computed server-side: `subscribed ? 100 : 5`.
+Coins extend tracker capacity: each extra tracker (beyond 5) costs 1 coin/day. Max 50 coins.
 
 Use this to:
 - Show/hide "Add Tracker" button (`trackerCount < trackerLimit`)
-- Show subscription badge
-- Show remaining ad slot days
+- Show coin balance and subscription status
+- Gate premium UI
 
 ---
 
@@ -137,6 +133,9 @@ Use this to:
 
 Anonymous users: `global` is always forced to `true` by backend regardless of what you send.
 Logged-in users: can set `global: false` to keep notices private.
+
+Show anonymous warning before creation:
+> *"Since you're not logged in, this tracker and its notices will be visible to all users. Log in to keep them private."*
 
 ```
 POST /api/trackers
@@ -151,78 +150,49 @@ Content-Type: application/json
 }
 ```
 
-**Play Integrity token** (get before calling this endpoint):
+**Play Integrity token:**
 ```dart
-// Add dependency: google_play_integrity (or use play_integrity package)
-final integrityManager = IntegrityManager();
-final tokenResponse = await integrityManager.requestIntegrityToken(
+final tokenResponse = await PlayIntegrity.requestIntegrityToken(
   nonce: base64Encode(utf8.encode(url + uid)),
 );
-final integrityToken = tokenResponse.token;
 ```
 
 Response `201`:
 ```json
-{
-  "id": "tracker-doc-id",
-  "tracker": { ...TrackerDoc... }
-}
+{ "id": "tracker-id", "tracker": { ...TrackerDoc } }
 ```
 
 Error responses:
-- `400` invalid URL / prompt too short / integrity token invalid
-- `403` tracker limit reached
-- `402` subscription required (if premium-only feature)
+- `400` invalid URL / integrity token required
+- `403` tracker limit reached → show coin/subscribe prompt
+- `429` rate limited
 
-**Show anonymous warning before creation:**
-> "Since you're not logged in, this tracker and its notices will be visible to all users. Log in to keep them private."
-> [Continue Anonymously] [Log In]
+**Tracker limit hit UI flow:**
+1. Show: "You've reached your tracker limit"
+2. CTA 1: "Watch an ad to earn coins" (see §7)
+3. CTA 2: "Subscribe for 100 trackers" (see §6)
 
-### List trackers
-
-```
-GET /api/trackers
-Authorization: Bearer <token>
-```
-
-Response:
-```json
-{ "trackers": [ ...TrackerDoc[] ] }
-```
-
-### Toggle active / delete / manual scrape
+### Other tracker endpoints
 
 ```
-PATCH  /api/trackers/:id          toggle active
-DELETE /api/trackers/:id          soft delete
-POST   /api/trackers/:id/scrape   trigger immediate check
+GET    /api/trackers              list user's active trackers
+GET    /api/trackers/:id          single tracker
+PUT    /api/trackers/:id          edit prompt/global (URL not editable — delete+recreate)
+DELETE /api/trackers/:id          soft delete (frees tracker slot)
+PATCH  /api/trackers/:id          toggle active/inactive (also adjusts slot count)
+POST   /api/trackers/:id/scrape   manual check now (429 if < 30min since last)
 ```
 
-All require auth. No body needed for toggle/scrape.
-
-### Edit tracker
-
-```
-PUT /api/trackers/:id
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "prompt": "updated prompt",
-  "global": true
-}
-```
-
-URL cannot be changed (changing URL = different source). If user wants different URL, delete and recreate.
+Manual scrape UI: show countdown timer after trigger. Disable button for 30 minutes.
 
 ---
 
 ## 5. Notices
 
-### GET /api/notices — cross-tracker global feed
+### GET /api/notices — cross-tracker feed
 
-**No auth required for `mode=global`.**  
-**Auth required for `mode=mine`.**
+**`mode=global`: no auth required.**
+**`mode=mine`: auth required.**
 
 ```
 GET /api/notices?mode=mine&limit=20&startAfter=<cursor>
@@ -242,38 +212,37 @@ Response:
       "title": "Exam Schedule Released",
       "summary": "...",
       "link": "https://...",
+      "global": true,
       "publishedDate": "2026-06-25",
       "createdAt": "...",
       "readAt": null
     }
   ],
-  "pagination": {
-    "hasMore": true,
-    "nextCursor": "last-notice-id"
-  }
+  "pagination": { "hasMore": true, "nextCursor": "last-notice-id" }
 }
 ```
 
-### GET /api/notices/:trackerId — per-tracker notices
+### GET /api/notices/single/:noticeId — deep link from notification
+
+```
+GET /api/notices/single/:noticeId
+Authorization: Bearer <token>
+```
+
+Use this when user taps FCM notification to navigate directly to a notice.
+
+### Per-tracker notices
 
 ```
 GET /api/notices/:trackerId?limit=20&startAfter=<cursor>
 Authorization: Bearer <token>
 ```
 
-Same response shape.
-
 ### Mark read
 
 ```
-PATCH /api/notices/:noticeId/read
-Authorization: Bearer <token>
-```
-
-### Mark all read for tracker
-
-```
-PATCH /api/notices/:trackerId/read-all
+PATCH /api/notices/:noticeId/read        mark single notice read
+PATCH /api/notices/:trackerId/read-all   mark all notices in tracker read
 Authorization: Bearer <token>
 ```
 
@@ -281,10 +250,12 @@ Authorization: Bearer <token>
 
 ## 6. Subscription (Google Play IAP)
 
-### Flow
+Subscription status auto-updates server-side via Google Play RTDN webhook. Flutter team does NOT need to implement any webhook — just call `/api/subscription/verify` after purchase and the server handles the rest (renewals, cancellations, expiry).
+
+### Purchase flow
 
 ```dart
-// 1. Show paywall, user taps subscribe
+// 1. Query products
 final products = await InAppPurchase.instance.queryProductDetails({'notice_watch_premium'});
 
 // 2. Initiate purchase
@@ -296,12 +267,16 @@ await InAppPurchase.instance.buyNonConsumable(
 InAppPurchase.instance.purchaseStream.listen((purchases) async {
   for (final purchase in purchases) {
     if (purchase.status == PurchaseStatus.purchased) {
-      // 4. Send to backend for verification
-      await verifySubscription(
-        purchaseToken: purchase.verificationData.serverVerificationData,
-        productId: purchase.productID,
+      // 4. Verify with backend
+      await http.post(
+        Uri.parse('$baseUrl/api/subscription/verify'),
+        headers: {'Authorization': 'Bearer $idToken', 'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'purchaseToken': purchase.verificationData.serverVerificationData,
+          'productId': purchase.productID,
+        }),
       );
-      // 5. Deliver: complete purchase
+      // 5. Complete purchase
       await InAppPurchase.instance.completePurchase(purchase);
       // 6. Refresh user state
       await refreshMe();
@@ -317,56 +292,51 @@ POST /api/subscription/verify
 Authorization: Bearer <token>
 Content-Type: application/json
 
-{
-  "purchaseToken": "google-play-purchase-token",
-  "productId": "notice_watch_premium"
-}
+{ "purchaseToken": "...", "productId": "notice_watch_premium" }
 ```
 
-Response `200`:
-```json
-{
-  "subscribed": true,
-  "subscribedUntil": "2027-06-27T..."
-}
-```
-
-Backend verifies with Google Play Developer API, updates UserDoc. Call `GET /api/me` after to refresh UI.
+Response `200`: `{ "subscribed": true }`
 
 ### Subscription restoration on app open
 
 ```dart
-// Restore purchases (handles reinstall / new device)
+// Restores purchases on new device / reinstall
 await InAppPurchase.instance.restorePurchases();
-// This triggers purchaseStream — handle same as above
-// Backend verify call is idempotent — safe to call again
+// purchaseStream fires → call /api/subscription/verify again (idempotent)
 ```
 
 ---
 
-## 7. Rewarded Ads (AdMob SSV)
+## 7. Coins & Rewarded Ads (AdMob)
 
-### Flow
+### How coins work
 
-The app does NOT call your backend directly after ad. AdMob's servers call your backend via SSV callback. App just needs to poll for confirmation.
+- Each extra tracker beyond 5 costs **1 coin per day**
+- Watch a rewarded ad → earn coins (amount set by ad unit, max 50 coins total)
+- Coins run out → extra trackers are disabled automatically (server-side daily sweep)
+- Re-earn coins → extra trackers can be re-enabled by toggling them back on
+
+### Rewarded ad flow
+
+The app does NOT call the backend directly after the ad. AdMob's servers call your backend via SSV. App polls `/api/me` to confirm.
 
 ```dart
-// 1. Set up rewarded ad with user ID in customData
+// 1. Load rewarded ad with Firebase UID in userId
 RewardedAd.load(
-  adUnitId: '<your-ad-unit-id>',
-  request: AdRequest(),
+  adUnitId: const String.fromEnvironment('ADMOB_REWARDED_ID'),
+  request: const AdRequest(),
   serverSideVerificationOptions: ServerSideVerificationOptions(
     userId: FirebaseAuth.instance.currentUser!.uid,
-    customData: 'ad_slot_grant',  // optional context
+    customData: 'coin_reward',
   ),
   rewardedAdLoadCallback: RewardedAdLoadCallback(
     onAdLoaded: (ad) {
-      // 2. Show ad
       ad.show(onUserEarnedReward: (ad, reward) async {
-        // 3. Ad completed — AdMob will call your backend SSV endpoint
-        // 4. Poll /api/me to confirm slot was granted (retry 3x with 2s delay)
-        await Future.delayed(Duration(seconds: 2));
+        // 2. Ad completed — AdMob will call your backend SSV endpoint automatically
+        // 3. Wait briefly then poll /api/me to confirm coins were granted
+        await Future.delayed(const Duration(seconds: 3));
         await refreshMe();
+        // Show updated coin balance to user
       });
     },
     onAdFailedToLoad: (error) { /* handle */ },
@@ -374,54 +344,75 @@ RewardedAd.load(
 );
 ```
 
-### Backend SSV endpoint
+### Coin display
 
-AdMob calls this — you do not call it from Flutter:
-```
-GET /api/ad/admob-ssv?...
-```
-
-After AdMob calls it, your backend creates an AdSlotDoc for the user. The `GET /api/me` poll confirms it.
-
-### Limits
-
-- Each rewarded ad = 1 extra tracker slot for 15 days
-- Max 5 extra slots via ads (total cap: 10 trackers without subscription)
-- `activeAdSlots` in `/api/me` response shows current active count
+Show coin balance prominently when user has extra trackers. Example UI:
+- "12 coins remaining (~12 days for 1 extra tracker)"
+- Progress bar from 0 to 50
+- "Watch ad to earn more" button
 
 ---
 
 ## 8. Devices (Push Notifications)
 
-Register FCM token after Firebase Messaging permission granted:
+Register FCM token after permission is granted. Backend upserts by token — no duplicates.
 
 ```dart
 final fcmToken = await FirebaseMessaging.instance.getToken();
 
-// Register
 await http.post(
   Uri.parse('$baseUrl/api/devices'),
   headers: {'Authorization': 'Bearer $idToken', 'Content-Type': 'application/json'},
-  body: jsonEncode({'fcmToken': fcmToken, 'platform': 'android'}),
+  body: jsonEncode({'fcmToken': fcmToken, 'platform': 'android'}), // or 'ios'
 );
 
-// Refresh token listener
+// Handle token refresh
 FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-  // Re-register with new token
+  // Re-register — backend upserts by token value, no duplicate created
+  await registerDevice(newToken);
 });
 ```
 
-Notification payload from backend:
-```json
-{
-  "data": {
-    "trackerId": "...",
-    "noticeId": "..."
-  }
-}
-```
+### FCM Notification Payload Types
 
-On notification tap: navigate to `NoticeDetailScreen(noticeId: ...)`.
+All notifications include a `data` map. Route by `data['type']`:
+
+| type | When sent | Data fields |
+|------|-----------|-------------|
+| `new_notice` | New notice found | `trackerId`, `noticeId` |
+| `coins_earned` | AdMob SSV processed | `coins` (earned), `totalCoins` |
+| `coins_low` | Balance ≤ 3 coins | `coins` (remaining) |
+| `tracker_disabled` | Coins ran out, trackers disabled | _(none)_ |
+
+```dart
+FirebaseMessaging.onMessage.listen((message) {
+  final type = message.data['type'];
+  switch (type) {
+    case 'new_notice':
+      final noticeId = message.data['noticeId'];
+      // Navigate to NoticeDetailScreen or show in-app banner
+      break;
+    case 'tracker_disabled':
+      // Show dialog: "Watch an ad to re-enable your trackers"
+      break;
+    case 'coins_low':
+      // Show snackbar with "Top up" CTA
+      break;
+    case 'coins_earned':
+      // Show snackbar: "You earned X coins!"
+      break;
+  }
+});
+
+// Notification tap (app in background/terminated)
+FirebaseMessaging.onMessageOpenedApp.listen((message) {
+  final type = message.data['type'];
+  if (type == 'new_notice') {
+    final noticeId = message.data['noticeId'];
+    navigateTo(NoticeDetailScreen(noticeId: noticeId));
+  }
+});
+```
 
 ---
 
@@ -430,22 +421,22 @@ On notification tap: navigate to `NoticeDetailScreen(noticeId: ...)`.
 | Status | Meaning | UI Action |
 |--------|---------|-----------|
 | `400` | Bad request | Show field error |
-| `401` | Token expired | Re-fetch ID token, retry once |
-| `402` | Subscription required | Show paywall |
-| `403` | Tracker limit reached | Show upgrade prompt |
+| `401` | Token expired | Re-fetch ID token via `getIdToken(force: true)`, retry once |
+| `402` | Subscription not active | Show paywall |
+| `403` | Tracker limit reached | Show coin/subscribe prompt |
 | `404` | Not found | Show empty state |
-| `429` | Rate limited | Show "try again later" |
-| `500` | Server error | Show generic error, log to Crashlytics |
+| `429` | Rate limited / cooldown | Show "try again later" or countdown timer |
+| `500` | Server error | Generic error, log to Crashlytics |
 
 ---
 
 ## 10. Anonymous User UX Checklist
 
-- [ ] Show banner: *"You're browsing anonymously. Log in to keep trackers private and restore them if you reinstall."*
-- [ ] On "Add Tracker": show global sharing warning before API call
-- [ ] Disable `global` toggle (lock to true) for anonymous users
-- [ ] On tracker limit hit: show "Watch an ad for 15 more days" CTA + "Subscribe for unlimited" CTA
-- [ ] After Google login link: refresh `GET /api/me` — UID stays the same, data persists
+- [ ] Show persistent banner: *"You're browsing anonymously. Log in to keep trackers private and restore them if you reinstall."*
+- [ ] On "Add Tracker": show global sharing warning modal before API call
+- [ ] Disable and lock `global` toggle to true for anonymous users
+- [ ] On tracker limit hit: show "Watch an ad to earn coins" + "Subscribe for 100 trackers" CTAs
+- [ ] After Google login link: call `GET /api/me` — UID stays the same, all data persists
 
 ---
 
@@ -455,4 +446,41 @@ On notification tap: navigate to `NoticeDetailScreen(noticeId: ...)`.
 // via --dart-define
 const baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:5674');
 const adUnitIdRewarded = String.fromEnvironment('ADMOB_REWARDED_ID');
+```
+
+---
+
+## 12. Full API Reference
+
+```
+Auth
+  POST /api/auth/register           Create/get UserDoc (idempotent)
+  GET  /api/me                      User profile, limits, coins
+
+Trackers
+  POST   /api/trackers              Create tracker
+  GET    /api/trackers              List user's trackers
+  GET    /api/trackers/:id          Get single tracker
+  PUT    /api/trackers/:id          Edit prompt / global flag
+  DELETE /api/trackers/:id          Delete tracker (frees slot)
+  PATCH  /api/trackers/:id          Toggle active/inactive
+  POST   /api/trackers/:id/scrape   Manual check now (30min cooldown)
+
+Notices
+  GET    /api/notices                Cross-tracker feed (?mode=mine|global)
+  GET    /api/notices/single/:id     Single notice by ID (for deep link)
+  GET    /api/notices/:trackerId     Per-tracker notices (paginated)
+  PATCH  /api/notices/:id/read       Mark single notice read
+  PATCH  /api/notices/:trackerId/read-all  Mark all read for tracker
+
+Devices
+  GET    /api/devices               List user's registered devices
+  POST   /api/devices               Register FCM token
+  DELETE /api/devices/:id           Unregister device
+
+Subscription
+  POST   /api/subscription/verify   Verify Google Play purchase
+
+Ads
+  GET    /api/ad/admob-ssv          AdMob SSV callback (called by AdMob, not app)
 ```

@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { verifyFirebaseToken } from '../auth/auth.middleware.js';
-import { registerDevice, unregisterDevice } from './device.service.js';
+import { registerDevice, unregisterDevice, listDevices } from './device.service.js';
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
@@ -34,6 +34,12 @@ export async function deviceRoutes(app: FastifyInstance): Promise<void> {
     );
 
     return reply.status(201).send({ id: device.id });
+  });
+
+  // ── GET /api/devices ────────────────────────────────────────────────────────
+  app.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
+    const devices = await listDevices(request.user.uid);
+    return reply.send({ devices });
   });
 
   // ── DELETE /api/devices/:deviceId ───────────────────────────────────────────

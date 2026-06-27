@@ -32,6 +32,21 @@ const app = Fastify({
   },
 });
 
+// Convert Firestore Timestamps to ISO strings in every response
+app.addHook('preSerialization', async (_request, _reply, payload) => {
+  return JSON.parse(JSON.stringify(payload, (_key, value) => {
+    if (
+      value !== null &&
+      typeof value === 'object' &&
+      typeof value._seconds === 'number' &&
+      typeof value._nanoseconds === 'number'
+    ) {
+      return new Date(value._seconds * 1000 + value._nanoseconds / 1e6).toISOString();
+    }
+    return value;
+  }));
+});
+
 // Allow empty JSON bodies (e.g. PATCH /read with no payload)
 app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
   if (!body || (body as string).trim() === '') {

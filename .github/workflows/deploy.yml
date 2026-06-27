@@ -23,15 +23,14 @@ jobs:
 
       - name: Deploy Firestore indexes
         env:
-          SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_CI_TOKEN }}
         run: |
-          echo "$SERVICE_ACCOUNT" > /tmp/firebase-sa.json
           npm install -g firebase-tools@13
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-sa.json firebase deploy \
+          firebase deploy \
             --only firestore:indexes \
             --project notice-watch \
+            --token "$FIREBASE_TOKEN" \
             --non-interactive
-          rm -f /tmp/firebase-sa.json
 
       - name: Sync source to server
         run: |

@@ -85,6 +85,9 @@ jobs:
             # Deploy Firestore indexes (uses firebase login stored on VPS)
             firebase deploy --only firestore:indexes --project notice-watch --non-interactive --force
 
+            # Install chromium system deps (libatk, libgbm, etc.) — needs sudo
+            sudo ./node_modules/.bin/playwright install-deps chromium 2>/dev/null || true
+
             # Install chromium — skip OS validation (ubuntu26.04 not yet in playwright's allowlist)
             PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 ./node_modules/.bin/playwright install chromium
 

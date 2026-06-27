@@ -55,7 +55,7 @@ jobs:
             # Write .env
             cat > .env << EOF
             NODE_ENV=production
-            PORT=3000
+            PORT=5674
             FIREBASE_SERVICE_ACCOUNT_PATH=./service-account.json
             DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
             DEEPSEEK_MODEL=deepseek-chat
